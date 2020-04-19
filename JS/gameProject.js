@@ -349,6 +349,49 @@ Shield.prototype.collide = function (state) {
   return new State(state.level, filtered, 'protected');
 };
 
+let BreakableWall = class BreakableWall {
+  constructor(pos) {
+    this.pos = pos;
+  }
+
+  get type() {
+    return 'breakableWall';
+  }
+
+  static create(pos) {
+    return new BreakableWall(pos);
+  }
+};
+
+BreakableWall.prototype.size = new Vec(2, 1);
+BreakableWall.prototype.update = function () {
+  return this;
+};
+BreakableWall.prototype.collide = function (state, time) {
+  let player = state.player;
+  if (this.pos.y + this.size.y > player.pos.y + 0.5) {
+    player.speed = new Vec(player.speed.x, -time * gravity);
+    player.pos = new Vec(player.pos.x, player.pos.y - 0.015);
+    return state;
+  } else {
+    let replaceActors = [Lava, Life, Shield];
+    let randomNum = Math.floor(Math.random() * replaceActors.length);
+    let replaceActor = replaceActors[randomNum].create(
+      this.pos.plus(new Vec(0, -1)),
+      '|'
+    );
+    let replacedActors = state.actors.map((actor) => {
+      if (actor === this) {
+        return replaceActor;
+      } else {
+        return actor;
+      }
+    });
+    player.speed = new Vec(player.speed.x, -player.speed.y);
+    return new State(state.level, replacedActors, state.status);
+  }
+};
+
 const levelChars = {
   '.': 'empty',
   '@': Player,
@@ -364,6 +407,7 @@ const levelChars = {
   o: Coin,
   v: Lava,
   s: Shield,
+  b: BreakableWall,
 };
 
 function elt(name, attrs, ...children) {
