@@ -124,8 +124,8 @@ const gravity = 30;
 const jumpSpeed = 17;
 Player.prototype.update = function (time, state, keys, directions) {
   let xSpeed = 0;
-  if (keys.ArrowLeft || directions.includes('Left')) xSpeed -= playerXSpeed;
-  if (keys.ArrowRight || directions.includes('Right')) xSpeed += playerXSpeed;
+  if (keys.ArrowLeft || directions.Left) xSpeed -= playerXSpeed;
+  if (keys.ArrowRight || directions.Right) xSpeed += playerXSpeed;
   let pos = this.pos;
   // xSpeed * time => the speed is proportional to time
   let movedX = pos.plus(new Vec(xSpeed * time, 0));
@@ -137,7 +137,7 @@ Player.prototype.update = function (time, state, keys, directions) {
   let movedY = pos.plus(new Vec(0, ySpeed * time));
   if (!state.level.touches(movedY, this.size, 'wall')) {
     pos = movedY;
-  } else if ((keys.ArrowUp || directions.includes('Up')) && ySpeed > 0) {
+  } else if ((keys.ArrowUp || directions.Up) && ySpeed > 0) {
     ySpeed = -jumpSpeed;
   } else {
     ySpeed = 0;
@@ -348,33 +348,28 @@ function trackKeys(keys) {
 }
 
 function trackDirections() {
+  let active = Object.create(null);
   let startPos;
-  let directions = [];
   function trackStart(event) {
-    for (let i = 0; i < event.touches.length; i++) {
-      let { pageX, pageY } = event.touches[i];
-      startPos = new Vec(pageX, pageY);
-    }
+    let { pageX, pageY } = event.touches[0];
+    startPos = new Vec(pageX, pageY);
   }
-  function trackEnd(event) {
-    for (let i = 0; i < event.touches.length; i++) {
-      let { pageX, pageY } = event.touches[i];
-      let endPos = new Vec(pageX, pageY);
-      let changedX = endPos.x - startPos.x;
-      let changedY = endPos.y - startPos.y;
-      if (changedY < -50) {
-        directions.push('Up');
-      }
-      if (changedX < -50) {
-        directions.push('Left');
-      } else if (changedX > 50) {
-        directions.push('Right');
-      }
-    }
+  function trackMove(event) {
+    let { pageX, pageY } = event.touches[0];
+    let pos = new Vec(pageX, pageY);
+    let changedX = pos.x - startPos.x;
+    let changedY = pos.y - startPos.y;
+    active['Up'] = changedY < -50;
+    active['Right'] = changedX < 50;
+    active['Left'] = changedX < -50;
+  }
+  function end() {
+    active = Object.create(null);
   }
   window.addEventListener('touchstart', trackStart);
-  window.addEventListener('touchend', trackEnd);
-  return directions;
+  window.addEventListener('touchmove', trackMove);
+  window.addEventListener('touchend', end);
+  return active;
 }
 
 function runAnimation(frameFun) {
