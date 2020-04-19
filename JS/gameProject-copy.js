@@ -348,30 +348,33 @@ function trackKeys(keys) {
 }
 
 function trackDirections() {
+  let startPos;
   let directions = [];
-  function track(event) {
+  function trackStart(event) {
     for (let i = 0; i < event.touches.length; i++) {
       let { pageX, pageY } = event.touches[i];
-      let pos = new Vec(pageX, pageY);
-      if (prevPos !== 'undefined') {
-        let changedX = pos.x - prevPos.x;
-        let changedY = pos.y - prevPos.y;
-        if (changedY < -50) {
-          directions.push('Up');
-        }
-        if (changedX < -50) {
-          directions.push('Left');
-        } else if (changedX > 50) {
-          directions.push('Right');
-        }
-      }
-      prevPos = pos;
+      startPos = new Vec(pageX, pageY);
     }
-    return directions;
   }
-
-  window.addEventListener('touchstart', track);
-  window.addEventListener('touchmove', track);
+  function trackEnd(event) {
+    for (let i = 0; i < event.touches.length; i++) {
+      let { pageX, pageY } = event.touches[i];
+      let endPos = new Vec(pageX, pageY);
+      let changedX = endPos.x - startPos.x;
+      let changedY = endPos.y - startPos.y;
+      if (changedY < -50) {
+        directions.push('Up');
+      }
+      if (changedX < -50) {
+        directions.push('Left');
+      } else if (changedX > 50) {
+        directions.push('Right');
+      }
+    }
+  }
+  window.addEventListener('touchstart', trackStart);
+  window.addEventListener('touchend', trackEnd);
+  return directions;
 }
 
 function runAnimation(frameFun) {
