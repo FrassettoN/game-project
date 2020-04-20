@@ -55,9 +55,11 @@ let State = class State {
   }
 };
 
-State.prototype.update = function (time, keys) {
+State.prototype.update = function (time, keys, touch) {
   // keys = keys that are being held down
-  let actors = this.actors.map((actor) => actor.update(time, this, keys));
+  let actors = this.actors.map((actor) =>
+    actor.update(time, this, keys, touch)
+  );
   let newState = new State(this.level, actors, this.status);
   if (newState.status !== 'playing' && newState.status !== 'protected')
     return newState;
@@ -120,10 +122,10 @@ Player.prototype.size = new Vec(0.8, 1.5);
 const playerXSpeed = 8;
 const gravity = 30;
 const jumpSpeed = 17;
-Player.prototype.update = function (time, state, keys) {
+Player.prototype.update = function (time, state, keys, touch) {
   let xSpeed = 0;
-  if (keys.ArrowLeft) xSpeed -= playerXSpeed;
-  if (keys.ArrowRight) xSpeed += playerXSpeed;
+  if (keys.ArrowLeft || touch.Left) xSpeed -= playerXSpeed;
+  if (keys.ArrowRight || touch.Right) xSpeed += playerXSpeed;
   let pos = this.pos;
   // xSpeed * time => the speed is proportional to time
   let movedX = pos.plus(new Vec(xSpeed * time, 0));
@@ -135,7 +137,7 @@ Player.prototype.update = function (time, state, keys) {
   let movedY = pos.plus(new Vec(0, ySpeed * time));
   if (!state.level.touches(movedY, this.size, 'wall')) {
     pos = movedY;
-  } else if (keys.ArrowUp && ySpeed > 0) {
+  } else if ((keys.ArrowUp || touch.Up) && ySpeed > 0) {
     ySpeed = -jumpSpeed;
   } else {
     ySpeed = 0;
@@ -475,6 +477,48 @@ function trackKeys(keys) {
   return down;
 }
 
+function trackTouch() {
+  let startPos;
+  let dir = Object.create(null);
+
+  function getPos(touchEvent) {
+    let touch = touchEvent.changedTouches[0];
+    let { pageX, pageY } = touch;
+    return new Vec(pageX, pageY);
+  }
+
+  function touchStart(event) {
+    startPos = getPos(event);
+    event.preventDefault();
+  }
+
+  function touchMove(event) {
+    let newPos = getPos(event);
+    dir['Up'] = newPos.y - startPos.y < -10;
+    dir['Left'] = newPos.x - startPos.x < -10;
+    dir['Right'] = newPos.x - startPos.x > 10;
+    startPos.y = newPos.y;
+    event.preventDefault();
+  }
+
+  function touchEnd(event) {
+    dir['Up'] = false;
+    dir['Left'] = false;
+    dir['Right'] = false;
+    event.preventDefault();
+  }
+
+  dir.unregister = () => {
+    window.removeEventListener('touchstart', touchStart);
+    window.removeEventListener('touchmove', touchMove);
+    window.removeEventListener('touchend', touchEnd);
+  };
+  window.addEventListener('touchstart', touchStart);
+  window.addEventListener('touchmove', touchMove);
+  window.addEventListener('touchend', touchEnd);
+  return dir;
+}
+
 function runAnimation(frameFun) {
   let lastTime = null;
   function frame(time) {
@@ -510,12 +554,13 @@ function runLevel(level, Display) {
     }
     window.addEventListener('keydown', escHandler);
     let arrowKeys = trackKeys(['ArrowUp', 'ArrowLeft', 'ArrowRight']);
+    let touchesDirections = trackTouch();
     function frame(time) {
       if (running === 'pausing') {
         running = 'no';
         return false;
       }
-      state = state.update(time, arrowKeys);
+      state = state.update(time, arrowKeys, touchesDirections);
       display.syncState(state);
       if (state.status === 'playing') return true;
       else if (state.status === 'protected') {
@@ -533,6 +578,7 @@ function runLevel(level, Display) {
         display.clear();
         window.removeEventListener('keydown', escHandler);
         arrowKeys.unregister();
+        touchesDirections.unregister();
         resolve(state.status);
         return false;
       }
