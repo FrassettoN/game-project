@@ -351,20 +351,23 @@ function trackDirections() {
   let startPos;
   let dir = Object.create(null);
 
-  function touchStart(event) {
-    let touch = event.changedTouches[0];
+  function getPos(touchEvent) {
+    let touch = touchEvent.changedTouches[0];
     let { pageX, pageY } = touch;
-    startPos = new Vec(pageX, pageY);
+    return new Vec(pageX, pageY);
+  }
+
+  function touchStart(event) {
+    startPos = getPos(event);
     event.preventDefault();
   }
 
   function touchMove(event) {
-    let touch = event.changedTouches[0];
-    let { pageX, pageY } = touch;
-    let newPos = new Vec(pageX, pageY);
+    let newPos = getPos(event);
     dir['Up'] = newPos.y - startPos.y < -30;
     dir['Left'] = newPos.x - startPos.x < 0;
     dir['Right'] = newPos.x - startPos.x > 0;
+    startPos = newPos;
     event.preventDefault();
   }
 
