@@ -348,28 +348,44 @@ function trackKeys(keys) {
 }
 
 function trackDirections() {
-  let active = Object.create(null);
   let startPos;
-  function trackStart(event) {
-    let { pageX, pageY } = event.touches[0];
-    startPos = new Vec(pageX, pageY);
+  let dir = Object.create(null);
+
+  function getPos(touchEvent) {
+    let touch = touchEvent.chagedTouches[0];
+    let { pageX, pageY } = touch;
+    return new Vec(pageX, pageY);
   }
-  function trackMove(event) {
-    let { pageX, pageY } = event.touches[0];
-    let pos = new Vec(pageX, pageY);
-    let changedX = pos.x - startPos.x;
-    let changedY = pos.y - startPos.y;
-    active['Up'] = changedY < -50;
-    active['Right'] = changedX < 50;
-    active['Left'] = changedX < -50;
+
+  function touchStart(event) {
+    startPos = getPos(event);
+    event.preventDefault();
   }
-  function end() {
-    active = Object.create(null);
+
+  function touchMove(event) {
+    let newPos = getPos(event);
+    dir['Up'] = newPos.y - startPos.y < -30;
+    dir['Left'] = newPos.x - startPos.x < 0;
+    dir['Right'] = newPos.x - startPos.x > 0;
+    event.preventDefault();
   }
-  window.addEventListener('touchstart', trackStart);
-  window.addEventListener('touchmove', trackMove);
-  window.addEventListener('touchend', end);
-  return active;
+
+  function touchEnd() {
+    dir['Up'] = false;
+    dir['Left'] = false;
+    dir['Right'] = false;
+    event.preventDefault();
+  }
+
+  dir.unregister = () => {
+    window.removeEventListener('touchstart', touchStart);
+    window.removeEventListener('touchmove', touchMove);
+    window.removeEventListener('touchend', touchEnd);
+  };
+  window.addEventListener('touchstart', touchStart);
+  window.addEventListener('touchmove', touchMove);
+  window.addEventListener('touchend', touchEnd);
+  return dir;
 }
 
 function runAnimation(frameFun) {
@@ -431,6 +447,7 @@ function runLevel(level, Display) {
         display.clear();
         window.removeEventListener('keydown', escHandler);
         arrowKeys.unregister();
+        touchDirections.unregister();
         resolve(state.status);
         return false;
       }
