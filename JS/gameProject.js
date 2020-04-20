@@ -494,10 +494,10 @@ function trackTouch() {
 
   function touchMove(event) {
     let newPos = getPos(event);
-    dir['Up'] = newPos.y - startPos.y < -30;
+    dir['Up'] = newPos.y - startPos.y < -10;
     dir['Left'] = newPos.x - startPos.x < 0;
     dir['Right'] = newPos.x - startPos.x > 0;
-    startPos = newPos;
+    startPos.y = newPos.y;
     event.preventDefault();
   }
 
