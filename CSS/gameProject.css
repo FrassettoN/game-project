@@ -56,15 +56,26 @@ body {
   background: radial-gradient(rgb(0, 110, 180), 40%, black);
 }
 
-.life {
-  background-color: rgb(25, 200, 25);
-  border-radius: 30%;
+.life::before {
+  color: rgb(25, 200, 25);
+  content: '❤'; /*to test on other devices*/
+  font-size: 1.5em;
 }
 
 .shield {
   background: var(--colorShield);
   border-radius: 0 0 10px 10px;
   box-shadow: 0 0 15px 5px white;
+}
+
+.speedIncreaser::before {
+  color: yellow;
+  content: '>>';
+}
+
+.jumpIncreaser::before {
+  color: yellow;
+  content: '⬆';
 }
 
 .lost .player {

@@ -119,9 +119,9 @@ let Player = class Player {
 };
 
 Player.prototype.size = new Vec(0.8, 1.5);
-const playerXSpeed = 8;
+let playerXSpeed = 8;
 const gravity = 30;
-const jumpSpeed = 17;
+let jumpSpeed = 17;
 Player.prototype.update = function (time, state, keys, touch) {
   let xSpeed = 0;
   if (keys.ArrowLeft || touch.Left) xSpeed -= playerXSpeed;
@@ -351,6 +351,72 @@ Shield.prototype.collide = function (state) {
   return new State(state.level, filtered, 'protected');
 };
 
+let SpeedIncreaser = class SpeedIncreaser {
+  constructor(pos, basePos, speed) {
+    this.pos = pos;
+    this.basePos = basePos;
+    this.speed = speed;
+  }
+
+  get type() {
+    return 'speedIncreaser';
+  }
+
+  static create(pos) {
+    return new SpeedIncreaser(pos, pos, new Vec(2.1, 0));
+  }
+};
+
+SpeedIncreaser.prototype.size = new Vec(1, 1);
+SpeedIncreaser.prototype.update = function (time) {
+  let newPos = this.pos.plus(this.speed.times(time));
+  let direction = 1;
+  if (newPos.x - this.basePos.x > 0.5) direction = -1;
+  else if (newPos.x - this.basePos.x < 0) direction = -1;
+  return new SpeedIncreaser(newPos, this.basePos, this.speed.times(direction));
+};
+SpeedIncreaser.prototype.collide = function (state) {
+  let filtered = state.actors.filter((a) => a !== this);
+  playerXSpeed = 16;
+  setTimeout(() => {
+    playerXSpeed = 8;
+  }, 8000);
+  return new State(state.level, filtered, state.status);
+};
+
+let JumpIncreaser = class JumpIncreaser {
+  constructor(pos, basePos, speed) {
+    this.pos = pos;
+    this.basePos = basePos;
+    this.speed = speed;
+  }
+
+  get type() {
+    return 'jumpIncreaser';
+  }
+
+  static create(pos) {
+    return new JumpIncreaser(pos, pos, new Vec(0, -2.1));
+  }
+};
+
+JumpIncreaser.prototype.size = new Vec(1, 1);
+JumpIncreaser.prototype.update = function (time) {
+  let newPos = this.pos.plus(this.speed.times(time));
+  let direction = 1;
+  if (newPos.y - this.basePos.y < -0.5) direction = -1;
+  else if (newPos.y - this.basePos.y > 0) direction = -1;
+  return new JumpIncreaser(newPos, this.basePos, this.speed.times(direction));
+};
+JumpIncreaser.prototype.collide = function (state) {
+  let filtered = state.actors.filter((a) => a !== this);
+  jumpSpeed = 25;
+  setTimeout(() => {
+    jumpSpeed = 17;
+  }, 8000);
+  return new State(state.level, filtered, state.status);
+};
+
 const levelChars = {
   '.': 'empty',
   '@': Player,
@@ -366,6 +432,8 @@ const levelChars = {
   o: Coin,
   v: Lava,
   s: Shield,
+  i: SpeedIncreaser,
+  j: JumpIncreaser,
 };
 
 function elt(name, attrs, ...children) {
@@ -532,6 +600,11 @@ function runAnimation(frameFun) {
   requestAnimationFrame(frame);
 }
 
+function resetVariables() {
+  playerXSpeed = 8;
+  jumpSpeed = 17;
+}
+
 function runLevel(level, Display) {
   let display = new Display(document.body, level);
   let state = State.start(level);
@@ -599,6 +672,7 @@ async function runGame(plans, Display) {
     let status = await runLevel(new Level(plans[level]), Display);
     if (status === 'won') level++;
     else if (status === 'lost') lives--;
+    resetVariables();
     if (lives === 0) break;
   }
   let result = lives > 0 ? "You've won!" : `lives: ${lives}... You've lost!`;
