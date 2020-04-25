@@ -363,7 +363,7 @@ let SpeedIncreaser = class SpeedIncreaser {
   }
 
   static create(pos) {
-    return new SpeedIncreaser(pos, pos, new Vec(2.1, 0));
+    return new SpeedIncreaser(pos, pos, new Vec(2, 0));
   }
 };
 
@@ -371,7 +371,7 @@ SpeedIncreaser.prototype.size = new Vec(1, 1);
 SpeedIncreaser.prototype.update = function (time) {
   let newPos = this.pos.plus(this.speed.times(time));
   let direction = 1;
-  if (newPos.x - this.basePos.x > 0.5) direction = -1;
+  if (newPos.x - this.basePos.x > 1) direction = -1;
   else if (newPos.x - this.basePos.x < 0) direction = -1;
   return new SpeedIncreaser(newPos, this.basePos, this.speed.times(direction));
 };
@@ -396,7 +396,7 @@ let JumpIncreaser = class JumpIncreaser {
   }
 
   static create(pos) {
-    return new JumpIncreaser(pos, pos, new Vec(0, -2.1));
+    return new JumpIncreaser(pos, pos, new Vec(0, -2));
   }
 };
 
@@ -404,7 +404,7 @@ JumpIncreaser.prototype.size = new Vec(1, 1);
 JumpIncreaser.prototype.update = function (time) {
   let newPos = this.pos.plus(this.speed.times(time));
   let direction = 1;
-  if (newPos.y - this.basePos.y < -0.5) direction = -1;
+  if (newPos.y - this.basePos.y < -1) direction = -1;
   else if (newPos.y - this.basePos.y > 0) direction = -1;
   return new JumpIncreaser(newPos, this.basePos, this.speed.times(direction));
 };
@@ -843,7 +843,7 @@ CanvasDisplay.prototype.drawActors = function (state) {
       this.cx.save();
       this.cx.shadowColor = 'yellow';
       this.cx.shadowBlur = actor.blur;
-      this.cx.drawImage(shieldCanvas, x, y);
+      this.cx.drawImage(starCanvas, x, y);
       this.cx.restore();
     }
   }
