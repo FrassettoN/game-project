@@ -269,7 +269,7 @@ let Monster = class Monster {
 };
 Monster.prototype.size = new Vec(1, 1);
 Monster.prototype.collide = function (state) {
-  if (this.pos.y - this.size.y > state.player.pos.y + 0.25) {
+  if (this.pos.y - this.size.y > state.player.pos.y) {
     let filtered = state.actors.filter((a) => a !== this);
     return new State(state.level, filtered, state.status);
   } else if (state.status !== 'protected') {
@@ -667,19 +667,28 @@ drawStar(starCx, starCanvas.width / 2 - 5, starCanvas.height / 2);
 function drawShield(cx, x, y) {
   cx.fillStyle = 'rgb(0, 145, 150)';
   cx.strokeStyle = 'rgb(0, 145, 150)';
+  let blurSpace = 20;
   cx.shadowColor = 'white';
   cx.shadowBlur = 15;
   cx.beginPath();
-  cx.moveTo(x, y);
-  cx.lineTo(x + scale, y);
-  cx.lineTo(x + scale, y + scale / 2);
-  cx.arc(x + scale / 2, y + scale / 2, scale / 2, 0, Math.PI);
-  cx.moveTo(x, y + scale / 2);
-  cx.lineTo(x, y);
+  let xStart = x + blurSpace;
+  let yStart = y + blurSpace;
+  cx.moveTo(xStart, yStart);
+  cx.lineTo(xStart + scale, yStart);
+  cx.lineTo(xStart + scale, yStart + scale / 2);
+  cx.arc(xStart + scale / 2, yStart + scale / 2, scale / 2, 0, Math.PI);
+  cx.moveTo(xStart, yStart + scale / 2);
+  cx.lineTo(xStart, yStart);
   cx.stroke();
   cx.fill();
   cx.shadowBlur = 0;
 }
+
+let shieldCanvas = document.createElement('canvas');
+shieldCanvas.width = 60;
+shieldCanvas.height = 60;
+let shieldCx = shieldCanvas.getContext('2d');
+drawShield(shieldCx, 0, 0);
 
 function drawSpeedIncreaser(cx, x, y) {
   cx.font = '1.5em Comic Sans MS';
@@ -825,7 +834,7 @@ CanvasDisplay.prototype.drawActors = function (state) {
     } else if (actor.type === 'life') {
       this.cx.drawImage(heartCanvas, x, y);
     } else if (actor.type === 'shield') {
-      drawShield(this.cx, x, y);
+      this.cx.drawImage(shieldCanvas, x - 20, y - 20);
     } else if (actor.type === 'speedIncreaser') {
       this.cx.drawImage(speedIncreaserCanvas, x, y);
     } else if (actor.type === 'jumpIncreaser') {
@@ -834,7 +843,7 @@ CanvasDisplay.prototype.drawActors = function (state) {
       this.cx.save();
       this.cx.shadowColor = 'yellow';
       this.cx.shadowBlur = actor.blur;
-      this.cx.drawImage(starCanvas, x, y);
+      this.cx.drawImage(shieldCanvas, x, y);
       this.cx.restore();
     }
   }
