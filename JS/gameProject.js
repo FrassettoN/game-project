@@ -465,97 +465,97 @@ const levelChars = {
   S: Star,
 };
 
-function elt(name, attrs, ...children) {
-  let dom = document.createElement(name);
-  for (let attr of Object.keys(attrs)) {
-    dom.setAttribute(attr, attrs[attr]);
-  }
-  for (let child of children) {
-    dom.appendChild(child);
-  }
-  return dom;
-}
+// function elt(name, attrs, ...children) {
+//   let dom = document.createElement(name);
+//   for (let attr of Object.keys(attrs)) {
+//     dom.setAttribute(attr, attrs[attr]);
+//   }
+//   for (let child of children) {
+//     dom.appendChild(child);
+//   }
+//   return dom;
+// }
 
-let DOMDisplay = class DOMDisplay {
-  constructor(parent, level) {
-    this.dom = elt('div', { class: 'game' }, drawGrid(level));
-    this.actorLayer = null;
-    parent.appendChild(this.dom);
-  }
+// let DOMDisplay = class DOMDisplay {
+//   constructor(parent, level) {
+//     this.dom = elt('div', { class: 'game' }, drawGrid(level));
+//     this.actorLayer = null;
+//     parent.appendChild(this.dom);
+//   }
 
-  clear() {
-    this.dom.remove();
-  }
-};
+//   clear() {
+//     this.dom.remove();
+//   }
+// };
+
+// function drawGrid(level) {
+//   return elt(
+//     'table',
+//     {
+//       class: 'background',
+//       style: `width: ${level.width * scale}px`,
+//     },
+//     ...level.rows.map((row) =>
+//       elt(
+//         'tr',
+//         { style: `height: ${scale}px` },
+//         ...row.map((type) => elt('td', { class: type }))
+//       )
+//     )
+//   );
+// }
+
+// function drawActors(actors) {
+//   return elt(
+//     'div',
+//     {},
+//     ...actors.map((actor) => {
+//       let rect = elt('div', { class: 'actor ' + actor.type });
+//       rect.style.width = `${actor.size.x * scale}px`;
+//       rect.style.height = `${actor.size.y * scale}px`;
+//       rect.style.left = `${actor.pos.x * scale}px`;
+//       rect.style.top = `${actor.pos.y * scale}px`;
+//       return rect;
+//     })
+//   );
+// }
+
+// DOMDisplay.prototype.syncState = function (state) {
+//   if (this.actorLayer) this.actorLayer.remove();
+//   this.actorLayer = drawActors(state.actors);
+//   this.dom.appendChild(this.actorLayer);
+//   this.dom.className = `game ${state.status}`;
+//   this.scrollPlayerIntoView(state);
+// };
+
+// // capire BENE come funziona
+// DOMDisplay.prototype.scrollPlayerIntoView = function (state) {
+//   let width = this.dom.clientWidth;
+//   let height = this.dom.clientHeight;
+//   let margin = width / 3;
+
+//   // The viewport
+//   let left = this.dom.scrollLeft;
+//   let right = left + width;
+//   let top = this.dom.scrollTop;
+//   let bottom = top + height;
+
+//   let player = state.player;
+//   let center = player.pos.plus(player.size.times(0.5)).times(scale);
+
+//   if (center.x < left + margin) {
+//     this.dom.scrollLeft = center.x - margin;
+//   } else if (center.x > right - margin) {
+//     this.dom.scrollLeft = center.x + margin - width;
+//   }
+//   if (center.y < top + margin) {
+//     this.dom.scrollTop = center.y - margin;
+//   } else if (center.y > bottom - margin) {
+//     this.dom.scrollTop = center.y + margin - height;
+//   }
+// };
 
 const scale = 20;
-
-function drawGrid(level) {
-  return elt(
-    'table',
-    {
-      class: 'background',
-      style: `width: ${level.width * scale}px`,
-    },
-    ...level.rows.map((row) =>
-      elt(
-        'tr',
-        { style: `height: ${scale}px` },
-        ...row.map((type) => elt('td', { class: type }))
-      )
-    )
-  );
-}
-
-function drawActors(actors) {
-  return elt(
-    'div',
-    {},
-    ...actors.map((actor) => {
-      let rect = elt('div', { class: 'actor ' + actor.type });
-      rect.style.width = `${actor.size.x * scale}px`;
-      rect.style.height = `${actor.size.y * scale}px`;
-      rect.style.left = `${actor.pos.x * scale}px`;
-      rect.style.top = `${actor.pos.y * scale}px`;
-      return rect;
-    })
-  );
-}
-
-DOMDisplay.prototype.syncState = function (state) {
-  if (this.actorLayer) this.actorLayer.remove();
-  this.actorLayer = drawActors(state.actors);
-  this.dom.appendChild(this.actorLayer);
-  this.dom.className = `game ${state.status}`;
-  this.scrollPlayerIntoView(state);
-};
-
-// capire BENE come funziona
-DOMDisplay.prototype.scrollPlayerIntoView = function (state) {
-  let width = this.dom.clientWidth;
-  let height = this.dom.clientHeight;
-  let margin = width / 3;
-
-  // The viewport
-  let left = this.dom.scrollLeft;
-  let right = left + width;
-  let top = this.dom.scrollTop;
-  let bottom = top + height;
-
-  let player = state.player;
-  let center = player.pos.plus(player.size.times(0.5)).times(scale);
-
-  if (center.x < left + margin) {
-    this.dom.scrollLeft = center.x - margin;
-  } else if (center.x > right - margin) {
-    this.dom.scrollLeft = center.x + margin - width;
-  }
-  if (center.y < top + margin) {
-    this.dom.scrollTop = center.y - margin;
-  } else if (center.y > bottom - margin) {
-    this.dom.scrollTop = center.y + margin - height;
-  }
-};
 
 class CanvasDisplay {
   constructor(parent, level) {
@@ -723,17 +723,11 @@ CanvasDisplay.prototype.drawPlayer = function (
   x -= playerXOverlap;
 
   if (state.status === 'protected') {
-    this.cx.shadowColor = 'white';
-    this.cx.shadowBlur = 20;
     this.cx.fillStyle = 'rgba(0, 145, 150, 0.9)';
-    // this.cx.fillRect(x, y, width + 1, height + 1);
     this.cx.beginPath();
     this.cx.arc(x + width / 2, y + height / 2, (width / 4) * 3, 0, Math.PI * 2);
     this.cx.fill();
-    this.cx.shadowBlur = 0;
   } else if (state.status === 'lost') {
-    this.cx.shadowColor = 'rgb(255, 50, 50)';
-    this.cx.shadowBlur = 15;
     let centerX = x + width / 2;
     let centerY = y + height / 2;
     let radialGradient = this.cx.createRadialGradient(
@@ -750,8 +744,6 @@ CanvasDisplay.prototype.drawPlayer = function (
     this.cx.fillStyle = radialGradient;
     this.cx.arc(x + width / 2, y + height / 2, (width / 6) * 5, 0, Math.PI * 2);
     this.cx.fill();
-    // this.cx.fillRect(x + width / 3, y + height / 3, width / 3, height / 3);
-    this.cx.shadowBlur = 0;
   }
 
   if (player.speed.x !== 0) {
