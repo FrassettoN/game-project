@@ -269,7 +269,7 @@ let Monster = class Monster {
 };
 Monster.prototype.size = new Vec(1, 1);
 Monster.prototype.collide = function (state) {
-  if (this.pos.y - this.size.y > state.player.pos.y) {
+  if (this.pos.y - this.size.y > state.player.pos.y + 0.25) {
     let filtered = state.actors.filter((a) => a !== this);
     return new State(state.level, filtered, state.status);
   } else if (state.status !== 'protected') {
@@ -687,8 +687,11 @@ CanvasDisplay.prototype.drawPlayer = function (
   if (state.status === 'protected') {
     this.cx.shadowColor = 'white';
     this.cx.shadowBlur = 20;
-    this.cx.fillStyle = 'rgba(0, 145, 150, 0.3)';
-    this.cx.fillRect(x, y, width + 1, height + 1);
+    this.cx.fillStyle = 'rgba(0, 145, 150, 0.9)';
+    // this.cx.fillRect(x, y, width + 1, height + 1);
+    this.cx.beginPath();
+    this.cx.arc(x + width / 2, y + height / 2, (width / 4) * 3, 0, Math.PI * 2);
+    this.cx.fill();
     this.cx.shadowBlur = 0;
   } else if (state.status === 'lost') {
     this.cx.shadowColor = 'rgb(255, 50, 50)';
@@ -705,20 +708,22 @@ CanvasDisplay.prototype.drawPlayer = function (
     );
     radialGradient.addColorStop(0, 'rgb(255, 115, 0)');
     radialGradient.addColorStop(1, 'rgb(255, 50, 50)');
+    this.cx.beginPath();
     this.cx.fillStyle = radialGradient;
-    this.cx.fillRect(x, y, width, height);
+    this.cx.arc(x + width / 2, y + height / 2, (width / 6) * 5, 0, Math.PI * 2);
+    this.cx.fill();
     // this.cx.fillRect(x + width / 3, y + height / 3, width / 3, height / 3);
     this.cx.shadowBlur = 0;
   }
 
-  if (player.speed.x != 0) {
+  if (player.speed.x !== 0) {
     this.flipPlayer = player.speed.x < 0;
   }
 
   let tile = 8;
-  if (player.speed.y != 0) {
+  if (player.speed.y !== 0) {
     tile = 9;
-  } else if (player.speed.x != 0) {
+  } else if (player.speed.x !== 0) {
     tile = Math.floor(Date.now() / 60) % 8;
   }
 
