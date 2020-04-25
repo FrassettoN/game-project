@@ -119,9 +119,9 @@ let Player = class Player {
 };
 
 Player.prototype.size = new Vec(0.8, 1.5);
-const playerXSpeed = 8;
+let playerXSpeed = 8;
 const gravity = 30;
-const jumpSpeed = 17;
+let jumpSpeed = 17;
 Player.prototype.update = function (time, state, keys, touch) {
   let xSpeed = 0;
   if (keys.ArrowLeft || touch.Left) xSpeed -= playerXSpeed;
@@ -269,7 +269,7 @@ let Monster = class Monster {
 };
 Monster.prototype.size = new Vec(1, 1);
 Monster.prototype.collide = function (state) {
-  if (this.pos.y - this.size.y > state.player.pos.y) {
+  if (this.pos.y - this.size.y > state.player.pos.y + 0.25) {
     let filtered = state.actors.filter((a) => a !== this);
     return new State(state.level, filtered, state.status);
   } else if (state.status !== 'protected') {
@@ -351,6 +351,72 @@ Shield.prototype.collide = function (state) {
   return new State(state.level, filtered, 'protected');
 };
 
+let SpeedIncreaser = class SpeedIncreaser {
+  constructor(pos, basePos, speed) {
+    this.pos = pos;
+    this.basePos = basePos;
+    this.speed = speed;
+  }
+
+  get type() {
+    return 'speedIncreaser';
+  }
+
+  static create(pos) {
+    return new SpeedIncreaser(pos, pos, new Vec(2.1, 0));
+  }
+};
+
+SpeedIncreaser.prototype.size = new Vec(1, 1);
+SpeedIncreaser.prototype.update = function (time) {
+  let newPos = this.pos.plus(this.speed.times(time));
+  let direction = 1;
+  if (newPos.x - this.basePos.x > 0.5) direction = -1;
+  else if (newPos.x - this.basePos.x < 0) direction = -1;
+  return new SpeedIncreaser(newPos, this.basePos, this.speed.times(direction));
+};
+SpeedIncreaser.prototype.collide = function (state) {
+  let filtered = state.actors.filter((a) => a !== this);
+  playerXSpeed = 16;
+  setTimeout(() => {
+    playerXSpeed = 8;
+  }, 8000);
+  return new State(state.level, filtered, state.status);
+};
+
+let JumpIncreaser = class JumpIncreaser {
+  constructor(pos, basePos, speed) {
+    this.pos = pos;
+    this.basePos = basePos;
+    this.speed = speed;
+  }
+
+  get type() {
+    return 'jumpIncreaser';
+  }
+
+  static create(pos) {
+    return new JumpIncreaser(pos, pos, new Vec(0, -2.1));
+  }
+};
+
+JumpIncreaser.prototype.size = new Vec(1, 1);
+JumpIncreaser.prototype.update = function (time) {
+  let newPos = this.pos.plus(this.speed.times(time));
+  let direction = 1;
+  if (newPos.y - this.basePos.y < -0.5) direction = -1;
+  else if (newPos.y - this.basePos.y > 0) direction = -1;
+  return new JumpIncreaser(newPos, this.basePos, this.speed.times(direction));
+};
+JumpIncreaser.prototype.collide = function (state) {
+  let filtered = state.actors.filter((a) => a !== this);
+  jumpSpeed = 25;
+  setTimeout(() => {
+    jumpSpeed = 17;
+  }, 8000);
+  return new State(state.level, filtered, state.status);
+};
+
 const levelChars = {
   '.': 'empty',
   '@': Player,
@@ -366,6 +432,8 @@ const levelChars = {
   o: Coin,
   v: Lava,
   s: Shield,
+  i: SpeedIncreaser,
+  j: JumpIncreaser,
 };
 
 function elt(name, attrs, ...children) {
@@ -460,6 +528,251 @@ DOMDisplay.prototype.scrollPlayerIntoView = function (state) {
   }
 };
 
+class CanvasDisplay {
+  constructor(parent, level) {
+    this.canvas = document.createElement('canvas');
+    this.canvas.width = Math.min(600, level.width * scale);
+    this.canvas.height = Math.min(450, level.height * scale);
+    parent.appendChild(this.canvas);
+    this.cx = this.canvas.getContext('2d');
+
+    this.flipPlayer = false;
+
+    this.viewport = {
+      left: 0,
+      top: 0,
+      width: this.canvas.width / scale,
+      height: this.canvas.height / scale,
+    };
+  }
+
+  clear() {
+    this.canvas.remove();
+  }
+}
+
+CanvasDisplay.prototype.syncState = function (state) {
+  this.updateViewport(state);
+  this.clearDisplay(state.status);
+  this.drawBackground(state.level);
+  this.drawActors(state);
+};
+
+// da capire MOLTO BENE
+CanvasDisplay.prototype.updateViewport = function (state) {
+  let view = this.viewport;
+  let margin = view.width / 3;
+  let player = state.player;
+  let center = player.pos.plus(player.size.times(0.5));
+
+  if (center.x < view.left + margin) {
+    view.left = Math.max(center.x - margin, 0);
+  } else if (center.x > view.left + view.width - margin) {
+    view.left = Math.min(
+      center.x + margin - view.width,
+      state.level.width - view.width
+    );
+  }
+
+  if (center.y < view.top + margin) {
+    view.top = Math.max(center.y - margin, 0);
+  } else if (center.y > view.top + view.height - margin) {
+    view.top = Math.min(
+      center.y + margin - view.height,
+      state.level.height - view.height
+    );
+  }
+};
+
+CanvasDisplay.prototype.clearDisplay = function (status) {
+  let color;
+  if (status === 'won') {
+    color = 'rgb(0, 115, 210)';
+  } else if (status === 'lost') {
+    color = 'rgb(0, 60, 100)';
+  } else {
+    color = this.cx.createLinearGradient(0, 0, 0, this.canvas.height);
+    color.addColorStop(0, 'rgb(45, 165, 255)');
+    color.addColorStop(1, 'rgb(0, 80, 140)');
+  }
+  this.cx.fillStyle = color;
+  this.cx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+};
+
+function createSprite(type) {
+  let sprite = document.createElement('img');
+  sprite.src = `./img/${type}.png`;
+  return sprite;
+}
+let coin = createSprite('coin');
+let lava = createSprite('lava');
+let wall = createSprite('wall');
+let monster = createSprite('monster');
+
+function drawHeart(cx, x, y) {
+  cx.font = '1.5em Comic Sans MS';
+  cx.fillStyle = 'rgb(25, 200, 25)';
+  cx.fillText('❤', x, y);
+}
+
+function drawShield(cx, x, y) {
+  cx.fillStyle = 'rgb(0, 145, 150)';
+  cx.strokeStyle = 'rgb(0, 145, 150)';
+  cx.shadowColor = 'white';
+  cx.shadowBlur = 15;
+  cx.beginPath();
+  cx.moveTo(x, y);
+  cx.lineTo(x + scale, y);
+  cx.lineTo(x + scale, y + scale / 2);
+  cx.arc(x + scale / 2, y + scale / 2, scale / 2, 0, Math.PI);
+  cx.moveTo(x, y + scale / 2);
+  cx.lineTo(x, y);
+  cx.stroke();
+  cx.fill();
+  cx.shadowBlur = 0;
+}
+
+function drawSpeedIncreaser(cx, x, y) {
+  cx.font = '1em Comic Sans MS';
+  cx.fillStyle = 'yellow';
+  cx.fillText('⏩', x, y);
+}
+function drawJumpIncreaser(cx, x, y) {
+  cx.font = '1em Comic Sans MS';
+  cx.fillStyle = 'yellow';
+  cx.fillText('⏫', x, y);
+}
+
+CanvasDisplay.prototype.drawBackground = function (level) {
+  let { left, top, width, height } = this.viewport;
+  let xStart = Math.floor(left);
+  let xEnd = Math.ceil(left + width);
+  let yStart = Math.floor(top);
+  let yEnd = Math.ceil(top + height);
+
+  for (let y = yStart; y < yEnd; y++) {
+    for (let x = xStart; x < xEnd; x++) {
+      let type = level.rows[y][x];
+      if (type === 'empty') continue;
+      let screenX = (x - left) * scale;
+      let screenY = (y - top) * scale;
+      if (type === 'wall') {
+        this.cx.drawImage(wall, screenX, screenY);
+      } else if (type === 'lava') {
+        this.cx.drawImage(lava, screenX + 1, screenY + 1);
+      }
+    }
+  }
+};
+
+let playerSprites = document.createElement('img');
+playerSprites.src = 'img/player.png';
+const playerXOverlap = 4;
+function flipHorizontally(context, around) {
+  context.translate(around, 0);
+  context.scale(-1, 1);
+  context.translate(-around, 0);
+}
+CanvasDisplay.prototype.drawPlayer = function (
+  player,
+  x,
+  y,
+  width,
+  height,
+  state
+) {
+  width += playerXOverlap * 2;
+  x -= playerXOverlap;
+
+  if (state.status === 'protected') {
+    this.cx.shadowColor = 'white';
+    this.cx.shadowBlur = 20;
+    this.cx.fillStyle = 'rgba(0, 145, 150, 0.9)';
+    // this.cx.fillRect(x, y, width + 1, height + 1);
+    this.cx.beginPath();
+    this.cx.arc(x + width / 2, y + height / 2, (width / 4) * 3, 0, Math.PI * 2);
+    this.cx.fill();
+    this.cx.shadowBlur = 0;
+  } else if (state.status === 'lost') {
+    this.cx.shadowColor = 'rgb(255, 50, 50)';
+    this.cx.shadowBlur = 15;
+    let centerX = x + width / 2;
+    let centerY = y + height / 2;
+    let radialGradient = this.cx.createRadialGradient(
+      centerX,
+      centerY,
+      width / 3,
+      centerX,
+      centerY,
+      (width / 3) * 2
+    );
+    radialGradient.addColorStop(0, 'rgb(255, 115, 0)');
+    radialGradient.addColorStop(1, 'rgb(255, 50, 50)');
+    this.cx.beginPath();
+    this.cx.fillStyle = radialGradient;
+    this.cx.arc(x + width / 2, y + height / 2, (width / 6) * 5, 0, Math.PI * 2);
+    this.cx.fill();
+    // this.cx.fillRect(x + width / 3, y + height / 3, width / 3, height / 3);
+    this.cx.shadowBlur = 0;
+  }
+
+  if (player.speed.x !== 0) {
+    this.flipPlayer = player.speed.x < 0;
+  }
+
+  let tile = 8;
+  if (player.speed.y !== 0) {
+    tile = 9;
+  } else if (player.speed.x !== 0) {
+    tile = Math.floor(Date.now() / 60) % 8;
+  }
+
+  this.cx.save();
+  if (this.flipPlayer) {
+    flipHorizontally(this.cx, x + width / 2);
+  }
+  let tileX = tile * width;
+  this.cx.drawImage(
+    playerSprites,
+    tileX,
+    0,
+    width,
+    height,
+    x,
+    y,
+    width,
+    height
+  );
+  this.cx.restore();
+};
+
+CanvasDisplay.prototype.drawActors = function (state) {
+  let actors = state.actors;
+  for (let actor of actors) {
+    let width = actor.size.x * scale;
+    let height = actor.size.y * scale;
+    let x = (actor.pos.x - this.viewport.left) * scale;
+    let y = (actor.pos.y - this.viewport.top) * scale;
+    if (actor.type === 'player') {
+      this.drawPlayer(actor, x, y, width, height, state);
+    } else if (actor.type === 'lava') {
+      this.cx.drawImage(lava, x, y);
+    } else if (actor.type === 'coin') {
+      this.cx.drawImage(coin, x, y);
+    } else if (actor.type === 'monster') {
+      this.cx.drawImage(monster, x + 1, y);
+    } else if (actor.type === 'life') {
+      drawHeart(this.cx, x, y);
+    } else if (actor.type === 'shield') {
+      drawShield(this.cx, x, y);
+    } else if (actor.type === 'speedIncreaser') {
+      drawSpeedIncreaser(this.cx, x, y);
+    } else if (actor.type === 'jumpIncreaser') {
+      drawJumpIncreaser(this.cx, x, y);
+    }
+  }
+};
+
 function trackKeys(keys) {
   let down = Object.create(null);
   function track(event) {
@@ -532,6 +845,11 @@ function runAnimation(frameFun) {
   requestAnimationFrame(frame);
 }
 
+function resetVariables() {
+  playerXSpeed = 8;
+  jumpSpeed = 17;
+}
+
 function runLevel(level, Display) {
   let display = new Display(document.body, level);
   let state = State.start(level);
@@ -587,9 +905,9 @@ function runLevel(level, Display) {
   });
 }
 
-function restartGame() {
+function restartGame(Display) {
   lives = 3;
-  runGame(GAME_LEVELS, DOMDisplay);
+  runGame(GAME_LEVELS, Display);
 }
 
 let lives = 3;
@@ -599,11 +917,12 @@ async function runGame(plans, Display) {
     let status = await runLevel(new Level(plans[level]), Display);
     if (status === 'won') level++;
     else if (status === 'lost') lives--;
+    resetVariables();
     if (lives === 0) break;
   }
   let result = lives > 0 ? "You've won!" : `lives: ${lives}... You've lost!`;
   console.log(result);
-  restartGame();
+  restartGame(Display);
 }
 
-runGame(GAME_LEVELS, DOMDisplay);
+runGame(GAME_LEVELS, CanvasDisplay);
