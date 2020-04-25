@@ -237,14 +237,14 @@ let Coin = class Coin {
     return new Coin(basePos, basePos, Math.random() * Math.PI * 2);
   }
 };
+let money = 0;
+let totalMoney = 0;
 Coin.prototype.size = new Vec(0.6, 0.6);
 Coin.prototype.collide = function (state) {
   // toglie la moneta che è stata presa
   let filtered = state.actors.filter((a) => a !== this);
-
-  let status = state.status;
-  if (!filtered.some((a) => a.type === 'coin')) status = 'won';
-  return new State(state.level, filtered, status);
+  money++;
+  return new State(state.level, filtered, state.status);
 };
 Coin.prototype.update = function (time) {
   const wobbleSpeed = 8;
@@ -417,6 +417,34 @@ JumpIncreaser.prototype.collide = function (state) {
   return new State(state.level, filtered, state.status);
 };
 
+let Star = class Star {
+  constructor(pos, blur, blurDir) {
+    this.pos = pos;
+    this.blur = blur;
+    this.blurDir = blurDir;
+  }
+
+  get type() {
+    return 'star';
+  }
+
+  static create(pos) {
+    return new Star(pos, 25, 1);
+  }
+};
+
+Star.prototype.size = new Vec(1, 1);
+Star.prototype.update = function (time) {
+  let newBlur = (this.blur -= time * 15 * this.blurDir);
+  let newBlurDir = newBlur < 0 || newBlur > 25 ? -this.blurDir : this.blurDir;
+  return new Star(this.pos, newBlur, newBlurDir);
+};
+Star.prototype.collide = function (state) {
+  let filtered = state.actors.filter((a) => a !== this);
+  let status = !filtered.some((a) => a.type === 'star') ? 'won' : state.status;
+  return new State(state.level, filtered, status);
+};
+
 const levelChars = {
   '.': 'empty',
   '@': Player,
@@ -434,6 +462,7 @@ const levelChars = {
   s: Shield,
   i: SpeedIncreaser,
   j: JumpIncreaser,
+  S: Star,
 };
 
 function elt(name, attrs, ...children) {
@@ -615,6 +644,15 @@ function drawHeart(cx, x, y) {
   cx.fillText('❤', x, y);
 }
 
+function drawStar(cx, x, y, actor) {
+  cx.save();
+  cx.font = `1em Comic Sans MS`;
+  cx.fillStyle = 'yellow';
+  cx.shadowColor = 'white';
+  cx.shadowBlur = actor.blur;
+  cx.fillText('⭐', x, y);
+  cx.restore();
+}
 function drawShield(cx, x, y) {
   cx.fillStyle = 'rgb(0, 145, 150)';
   cx.strokeStyle = 'rgb(0, 145, 150)';
@@ -769,6 +807,8 @@ CanvasDisplay.prototype.drawActors = function (state) {
       drawSpeedIncreaser(this.cx, x, y);
     } else if (actor.type === 'jumpIncreaser') {
       drawJumpIncreaser(this.cx, x, y);
+    } else if (actor.type === 'star') {
+      drawStar(this.cx, x, y, actor);
     }
   }
 };
@@ -848,6 +888,7 @@ function runAnimation(frameFun) {
 function resetVariables() {
   playerXSpeed = 8;
   jumpSpeed = 17;
+  money = 0;
 }
 
 function runLevel(level, Display) {
@@ -912,15 +953,20 @@ function restartGame(Display) {
 
 let lives = 3;
 async function runGame(plans, Display) {
-  for (let level = 0; level < plans.length; ) {
+  for (let level = 0; level < plans.length - 3; ) {
     console.log(`lives: ${lives}`);
     let status = await runLevel(new Level(plans[level]), Display);
-    if (status === 'won') level++;
-    else if (status === 'lost') lives--;
+    if (status === 'won') {
+      totalMoney += money;
+      console.log(`money earned: ${money}`);
+      level++;
+    } else if (status === 'lost') lives--;
     resetVariables();
     if (lives === 0) break;
   }
   let result = lives > 0 ? "You've won!" : `lives: ${lives}... You've lost!`;
+  totalMoney += 100 * lives;
+  console.log(`total money: ${totalMoney}`);
   console.log(result);
   restartGame(Display);
 }
