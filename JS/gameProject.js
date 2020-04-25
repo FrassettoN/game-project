@@ -563,7 +563,7 @@ class CanvasDisplay {
     this.canvas.width = Math.min(600, level.width * scale);
     this.canvas.height = Math.min(450, level.height * scale);
     parent.appendChild(this.canvas);
-    this.cx = this.canvas.getContext('2d');
+    this.cx = this.canvas.getContext('2d', { alpha: false });
 
     this.flipPlayer = false;
 
@@ -639,20 +639,31 @@ let wall = createSprite('wall');
 let monster = createSprite('monster');
 
 function drawHeart(cx, x, y) {
-  cx.font = '1.5em Comic Sans MS';
+  cx.font = '2.3em Comic Sans MS';
   cx.fillStyle = 'rgb(25, 200, 25)';
+  cx.textAlign = 'center';
   cx.fillText('❤', x, y);
 }
 
-function drawStar(cx, x, y, actor) {
-  cx.save();
-  cx.font = `1em Comic Sans MS`;
+let heartCanvas = document.createElement('canvas');
+heartCanvas.width = 30;
+heartCanvas.height = 40;
+let heartCx = heartCanvas.getContext('2d');
+drawHeart(heartCx, heartCanvas.width / 2 - 5, heartCanvas.height / 2);
+
+function drawStar(cx, x, y) {
+  cx.font = `1.7em Comic Sans MS`;
   cx.fillStyle = 'yellow';
-  cx.shadowColor = 'white';
-  cx.shadowBlur = actor.blur;
+  cx.textAlign = 'center';
   cx.fillText('⭐', x, y);
-  cx.restore();
 }
+
+let starCanvas = document.createElement('canvas');
+starCanvas.width = 30;
+starCanvas.height = 35;
+let starCx = starCanvas.getContext('2d');
+drawStar(starCx, starCanvas.width / 2 - 5, starCanvas.height / 2);
+
 function drawShield(cx, x, y) {
   cx.fillStyle = 'rgb(0, 145, 150)';
   cx.strokeStyle = 'rgb(0, 145, 150)';
@@ -671,16 +682,36 @@ function drawShield(cx, x, y) {
 }
 
 function drawSpeedIncreaser(cx, x, y) {
-  cx.font = '1em Comic Sans MS';
-  cx.fillStyle = 'yellow';
+  cx.font = '1.5em Comic Sans MS';
+  cx.textAlign = 'center';
   cx.fillText('⏩', x, y);
 }
+
 function drawJumpIncreaser(cx, x, y) {
-  cx.font = '1em Comic Sans MS';
-  cx.fillStyle = 'yellow';
+  cx.font = '1.5em Comic Sans MS';
+  cx.textAlign = 'center';
   cx.fillText('⏫', x, y);
 }
 
+let speedIncreaserCanvas = document.createElement('canvas');
+speedIncreaserCanvas.width = 20;
+speedIncreaserCanvas.height = 30;
+let speedIncreaserCx = speedIncreaserCanvas.getContext('2d');
+drawSpeedIncreaser(
+  speedIncreaserCx,
+  speedIncreaserCanvas.width / 2,
+  speedIncreaserCanvas.height / 2
+);
+
+let jumpIncreaserCanvas = document.createElement('canvas');
+jumpIncreaserCanvas.width = 20;
+jumpIncreaserCanvas.height = 30;
+let jumpIncreaserCx = jumpIncreaserCanvas.getContext('2d');
+drawJumpIncreaser(
+  jumpIncreaserCx,
+  jumpIncreaserCanvas.width / 2,
+  jumpIncreaserCanvas.height / 2
+);
 CanvasDisplay.prototype.drawBackground = function (level) {
   let { left, top, width, height } = this.viewport;
   let xStart = Math.floor(left);
@@ -792,15 +823,19 @@ CanvasDisplay.prototype.drawActors = function (state) {
     } else if (actor.type === 'monster') {
       this.cx.drawImage(monster, x + 1, y);
     } else if (actor.type === 'life') {
-      drawHeart(this.cx, x, y);
+      this.cx.drawImage(heartCanvas, x, y);
     } else if (actor.type === 'shield') {
       drawShield(this.cx, x, y);
     } else if (actor.type === 'speedIncreaser') {
-      drawSpeedIncreaser(this.cx, x, y);
+      this.cx.drawImage(speedIncreaserCanvas, x, y);
     } else if (actor.type === 'jumpIncreaser') {
-      drawJumpIncreaser(this.cx, x, y);
+      this.cx.drawImage(jumpIncreaserCanvas, x, y);
     } else if (actor.type === 'star') {
-      drawStar(this.cx, x, y, actor);
+      this.cx.save();
+      this.cx.shadowColor = 'yellow';
+      this.cx.shadowBlur = actor.blur;
+      this.cx.drawImage(starCanvas, x, y);
+      this.cx.restore();
     }
   }
 };
@@ -945,7 +980,7 @@ function restartGame(Display) {
 
 let lives = 3;
 async function runGame(plans, Display) {
-  for (let level = 0; level < plans.length - 3; ) {
+  for (let level = 0; level < plans.length; ) {
     console.log(`lives: ${lives}`);
     let status = await runLevel(new Level(plans[level]), Display);
     if (status === 'won') {
