@@ -288,10 +288,8 @@ Monster.prototype.update = function (time, state) {
 };
 
 let Life = class Life {
-  constructor(pos, basePos, wobble) {
+  constructor(pos) {
     this.pos = pos;
-    this.basePos = basePos;
-    this.wobble = wobble;
   }
 
   get type() {
@@ -299,7 +297,7 @@ let Life = class Life {
   }
 
   static create(pos) {
-    return new Life(pos, pos, Math.random() * Math.PI * 2);
+    return new Life(pos);
   }
 };
 Life.prototype.size = new Vec(1, 1);
@@ -310,15 +308,7 @@ Life.prototype.collide = function (state) {
   return new State(state.level, filtered, state.status);
 };
 Life.prototype.update = function (time) {
-  const wobbleSpeed = 4;
-  const wobbleDist = 0.1;
-  let wobble = this.wobble + time * wobbleSpeed;
-  let wobblePosX = Math.cos(wobble) * wobbleDist;
-  return new Life(
-    this.basePos.plus(new Vec(wobblePosX, 0)),
-    this.basePos,
-    wobble
-  );
+  return this;
 };
 
 let Shield = class Shield {
@@ -352,10 +342,8 @@ Shield.prototype.collide = function (state) {
 };
 
 let SpeedIncreaser = class SpeedIncreaser {
-  constructor(pos, basePos, speed) {
+  constructor(pos) {
     this.pos = pos;
-    this.basePos = basePos;
-    this.speed = speed;
   }
 
   get type() {
@@ -363,17 +351,12 @@ let SpeedIncreaser = class SpeedIncreaser {
   }
 
   static create(pos) {
-    return new SpeedIncreaser(pos, pos, new Vec(2, 0));
+    return new SpeedIncreaser(pos);
   }
 };
 
 SpeedIncreaser.prototype.size = new Vec(1, 1);
-SpeedIncreaser.prototype.update = function (time) {
-  // let newPos = this.pos.plus(this.speed.times(time));
-  // let direction = 1;
-  // if (newPos.x - this.basePos.x > 1) direction = -1;
-  // else if (newPos.x - this.basePos.x < 0) direction = -1;
-  // return new SpeedIncreaser(newPos, this.basePos, this.speed.times(direction));
+SpeedIncreaser.prototype.update = function () {
   return this;
 };
 SpeedIncreaser.prototype.collide = function (state) {
@@ -386,10 +369,8 @@ SpeedIncreaser.prototype.collide = function (state) {
 };
 
 let JumpIncreaser = class JumpIncreaser {
-  constructor(pos, basePos, speed) {
+  constructor(pos) {
     this.pos = pos;
-    this.basePos = basePos;
-    this.speed = speed;
   }
 
   get type() {
@@ -397,17 +378,12 @@ let JumpIncreaser = class JumpIncreaser {
   }
 
   static create(pos) {
-    return new JumpIncreaser(pos, pos, new Vec(0, -2));
+    return new JumpIncreaser(pos);
   }
 };
 
 JumpIncreaser.prototype.size = new Vec(1, 1);
-JumpIncreaser.prototype.update = function (time) {
-  // let newPos = this.pos.plus(this.speed.times(time));
-  // let direction = 1;
-  // if (newPos.y - this.basePos.y < -1) direction = -1;
-  // else if (newPos.y - this.basePos.y > 0) direction = -1;
-  // return new JumpIncreaser(newPos, this.basePos, this.speed.times(direction));
+JumpIncreaser.prototype.update = function () {
   return this;
 };
 JumpIncreaser.prototype.collide = function (state) {
@@ -874,6 +850,7 @@ function runLevel(level, Display) {
         endShield -= time;
         if (endShield < 0) {
           state.status = 'playing';
+          endShield = 5;
         } else {
           console.log(Math.ceil(endShield));
         }
