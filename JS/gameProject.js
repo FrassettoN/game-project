@@ -369,11 +369,12 @@ let SpeedIncreaser = class SpeedIncreaser {
 
 SpeedIncreaser.prototype.size = new Vec(1, 1);
 SpeedIncreaser.prototype.update = function (time) {
-  let newPos = this.pos.plus(this.speed.times(time));
-  let direction = 1;
-  if (newPos.x - this.basePos.x > 1) direction = -1;
-  else if (newPos.x - this.basePos.x < 0) direction = -1;
-  return new SpeedIncreaser(newPos, this.basePos, this.speed.times(direction));
+  // let newPos = this.pos.plus(this.speed.times(time));
+  // let direction = 1;
+  // if (newPos.x - this.basePos.x > 1) direction = -1;
+  // else if (newPos.x - this.basePos.x < 0) direction = -1;
+  // return new SpeedIncreaser(newPos, this.basePos, this.speed.times(direction));
+  return this;
 };
 SpeedIncreaser.prototype.collide = function (state) {
   let filtered = state.actors.filter((a) => a !== this);
@@ -402,11 +403,12 @@ let JumpIncreaser = class JumpIncreaser {
 
 JumpIncreaser.prototype.size = new Vec(1, 1);
 JumpIncreaser.prototype.update = function (time) {
-  let newPos = this.pos.plus(this.speed.times(time));
-  let direction = 1;
-  if (newPos.y - this.basePos.y < -1) direction = -1;
-  else if (newPos.y - this.basePos.y > 0) direction = -1;
-  return new JumpIncreaser(newPos, this.basePos, this.speed.times(direction));
+  // let newPos = this.pos.plus(this.speed.times(time));
+  // let direction = 1;
+  // if (newPos.y - this.basePos.y < -1) direction = -1;
+  // else if (newPos.y - this.basePos.y > 0) direction = -1;
+  // return new JumpIncreaser(newPos, this.basePos, this.speed.times(direction));
+  return this;
 };
 JumpIncreaser.prototype.collide = function (state) {
   let filtered = state.actors.filter((a) => a !== this);
@@ -464,96 +466,6 @@ const levelChars = {
   j: JumpIncreaser,
   S: Star,
 };
-
-// function elt(name, attrs, ...children) {
-//   let dom = document.createElement(name);
-//   for (let attr of Object.keys(attrs)) {
-//     dom.setAttribute(attr, attrs[attr]);
-//   }
-//   for (let child of children) {
-//     dom.appendChild(child);
-//   }
-//   return dom;
-// }
-
-// let DOMDisplay = class DOMDisplay {
-//   constructor(parent, level) {
-//     this.dom = elt('div', { class: 'game' }, drawGrid(level));
-//     this.actorLayer = null;
-//     parent.appendChild(this.dom);
-//   }
-
-//   clear() {
-//     this.dom.remove();
-//   }
-// };
-
-// function drawGrid(level) {
-//   return elt(
-//     'table',
-//     {
-//       class: 'background',
-//       style: `width: ${level.width * scale}px`,
-//     },
-//     ...level.rows.map((row) =>
-//       elt(
-//         'tr',
-//         { style: `height: ${scale}px` },
-//         ...row.map((type) => elt('td', { class: type }))
-//       )
-//     )
-//   );
-// }
-
-// function drawActors(actors) {
-//   return elt(
-//     'div',
-//     {},
-//     ...actors.map((actor) => {
-//       let rect = elt('div', { class: 'actor ' + actor.type });
-//       rect.style.width = `${actor.size.x * scale}px`;
-//       rect.style.height = `${actor.size.y * scale}px`;
-//       rect.style.left = `${actor.pos.x * scale}px`;
-//       rect.style.top = `${actor.pos.y * scale}px`;
-//       return rect;
-//     })
-//   );
-// }
-
-// DOMDisplay.prototype.syncState = function (state) {
-//   if (this.actorLayer) this.actorLayer.remove();
-//   this.actorLayer = drawActors(state.actors);
-//   this.dom.appendChild(this.actorLayer);
-//   this.dom.className = `game ${state.status}`;
-//   this.scrollPlayerIntoView(state);
-// };
-
-// // capire BENE come funziona
-// DOMDisplay.prototype.scrollPlayerIntoView = function (state) {
-//   let width = this.dom.clientWidth;
-//   let height = this.dom.clientHeight;
-//   let margin = width / 3;
-
-//   // The viewport
-//   let left = this.dom.scrollLeft;
-//   let right = left + width;
-//   let top = this.dom.scrollTop;
-//   let bottom = top + height;
-
-//   let player = state.player;
-//   let center = player.pos.plus(player.size.times(0.5)).times(scale);
-
-//   if (center.x < left + margin) {
-//     this.dom.scrollLeft = center.x - margin;
-//   } else if (center.x > right - margin) {
-//     this.dom.scrollLeft = center.x + margin - width;
-//   }
-//   if (center.y < top + margin) {
-//     this.dom.scrollTop = center.y - margin;
-//   } else if (center.y > bottom - margin) {
-//     this.dom.scrollTop = center.y + margin - height;
-//   }
-// };
 
 const scale = 20;
 
