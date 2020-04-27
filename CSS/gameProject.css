@@ -1,4 +1,4 @@
-:root {
+/* :root {
   --colorShield: rgb(0, 145, 150);
 }
 
@@ -58,7 +58,7 @@ body {
 
 .life::before {
   color: rgb(25, 200, 25);
-  content: '❤'; /*to test on other devices*/
+  content: '❤'; /*to test on other devices
   font-size: 1.5em;
 }
 
@@ -89,4 +89,4 @@ body {
 .protected .player {
   background: var(--colorShield);
   box-shadow: 0 -7px 15px 3px white, 0 0 15px 3px white, 0 7px 15px 3px white;
-}
+} */

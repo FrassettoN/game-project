@@ -461,6 +461,15 @@ class CanvasDisplay {
       width: this.canvas.width / scale,
       height: this.canvas.height / scale,
     };
+
+    this.backgroundColor = this.cx.createLinearGradient(
+      0,
+      0,
+      0,
+      this.canvas.height
+    );
+    this.backgroundColor.addColorStop(0, 'rgb(45, 165, 255)');
+    this.backgroundColor.addColorStop(1, 'rgb(0, 80, 140)');
   }
 
   clear() {
@@ -508,9 +517,7 @@ CanvasDisplay.prototype.clearDisplay = function (status) {
   } else if (status === 'lost') {
     color = 'rgb(0, 60, 100)';
   } else {
-    color = this.cx.createLinearGradient(0, 0, 0, this.canvas.height);
-    color.addColorStop(0, 'rgb(45, 165, 255)');
-    color.addColorStop(1, 'rgb(0, 80, 140)');
+    color = this.backgroundColor;
   }
   this.cx.fillStyle = color;
   this.cx.fillRect(0, 0, this.canvas.width, this.canvas.height);
@@ -525,42 +532,25 @@ let coin = createSprite('coin');
 let lava = createSprite('lava');
 let wall = createSprite('wall');
 let monster = createSprite('monster');
+let speedIncreaser = createSprite('speedIncreaser');
+let jumpIncreaser = createSprite('jumpIncreaser');
+let star = createSprite('star');
+let heart = createSprite('heart');
 
-function drawHeart(cx, x, y) {
-  cx.font = '2.3em Comic Sans MS';
-  cx.fillStyle = 'rgb(25, 200, 25)';
-  cx.textAlign = 'center';
-  cx.fillText('❤', x, y);
-}
-
-let heartCanvas = document.createElement('canvas');
-heartCanvas.width = 30;
-heartCanvas.height = 40;
-let heartCx = heartCanvas.getContext('2d');
-drawHeart(heartCx, heartCanvas.width / 2 - 5, heartCanvas.height / 2);
-
-function drawStar(cx, x, y) {
-  cx.font = `1.7em Comic Sans MS`;
-  cx.fillStyle = 'yellow';
-  cx.textAlign = 'center';
-  cx.fillText('⭐', x, y);
-}
-
-let starCanvas = document.createElement('canvas');
-starCanvas.width = 30;
-starCanvas.height = 35;
-let starCx = starCanvas.getContext('2d');
-drawStar(starCx, starCanvas.width / 2 - 5, starCanvas.height / 2);
+let offScreenCanvas = document.createElement('canvas');
+offScreenCanvas.width = 120;
+offScreenCanvas.height = 60;
+let offScreenCx = offScreenCanvas.getContext('2d');
 
 function drawShield(cx, x, y) {
+  let blurSpace = 20;
+  let xStart = x + blurSpace;
+  let yStart = y + blurSpace;
   cx.fillStyle = 'rgb(0, 145, 150)';
   cx.strokeStyle = 'rgb(0, 145, 150)';
-  let blurSpace = 20;
   cx.shadowColor = 'white';
   cx.shadowBlur = 15;
   cx.beginPath();
-  let xStart = x + blurSpace;
-  let yStart = y + blurSpace;
   cx.moveTo(xStart, yStart);
   cx.lineTo(xStart + scale, yStart);
   cx.lineTo(xStart + scale, yStart + scale / 2);
@@ -572,43 +562,29 @@ function drawShield(cx, x, y) {
   cx.shadowBlur = 0;
 }
 
-let shieldCanvas = document.createElement('canvas');
-shieldCanvas.width = 60;
-shieldCanvas.height = 60;
-let shieldCx = shieldCanvas.getContext('2d');
-drawShield(shieldCx, 0, 0);
-
-function drawSpeedIncreaser(cx, x, y) {
-  cx.font = '1.5em Comic Sans MS';
-  cx.textAlign = 'center';
-  cx.fillText('⏩', x, y);
+function drawDeadCircle(cx, x, y) {
+  let radius = 20;
+  let centerX = x + radius;
+  let centerY = y + offScreenCanvas.height / 2;
+  let radialGradient = cx.createRadialGradient(
+    centerX,
+    centerY,
+    8,
+    centerX,
+    centerY,
+    16
+  );
+  radialGradient.addColorStop(0, 'rgb(255, 115, 0)');
+  radialGradient.addColorStop(1, 'rgb(255, 50, 50)');
+  cx.beginPath();
+  cx.fillStyle = radialGradient;
+  cx.arc(centerX, centerY, radius, 0, 7);
+  cx.fill();
 }
 
-function drawJumpIncreaser(cx, x, y) {
-  cx.font = '1.5em Comic Sans MS';
-  cx.textAlign = 'center';
-  cx.fillText('⏫', x, y);
-}
+drawShield(offScreenCx, 0, 0);
+drawDeadCircle(offScreenCx, 60, 0);
 
-let speedIncreaserCanvas = document.createElement('canvas');
-speedIncreaserCanvas.width = 20;
-speedIncreaserCanvas.height = 30;
-let speedIncreaserCx = speedIncreaserCanvas.getContext('2d');
-drawSpeedIncreaser(
-  speedIncreaserCx,
-  speedIncreaserCanvas.width / 2,
-  speedIncreaserCanvas.height / 2
-);
-
-let jumpIncreaserCanvas = document.createElement('canvas');
-jumpIncreaserCanvas.width = 20;
-jumpIncreaserCanvas.height = 30;
-let jumpIncreaserCx = jumpIncreaserCanvas.getContext('2d');
-drawJumpIncreaser(
-  jumpIncreaserCx,
-  jumpIncreaserCanvas.width / 2,
-  jumpIncreaserCanvas.height / 2
-);
 CanvasDisplay.prototype.drawBackground = function (level) {
   let { left, top, width, height } = this.viewport;
   let xStart = Math.floor(left);
@@ -656,22 +632,7 @@ CanvasDisplay.prototype.drawPlayer = function (
     this.cx.arc(x + width / 2, y + height / 2, (width / 4) * 3, 0, Math.PI * 2);
     this.cx.fill();
   } else if (state.status === 'lost') {
-    let centerX = x + width / 2;
-    let centerY = y + height / 2;
-    let radialGradient = this.cx.createRadialGradient(
-      centerX,
-      centerY,
-      width / 3,
-      centerX,
-      centerY,
-      (width / 3) * 2
-    );
-    radialGradient.addColorStop(0, 'rgb(255, 115, 0)');
-    radialGradient.addColorStop(1, 'rgb(255, 50, 50)');
-    this.cx.beginPath();
-    this.cx.fillStyle = radialGradient;
-    this.cx.arc(x + width / 2, y + height / 2, (width / 6) * 5, 0, Math.PI * 2);
-    this.cx.fill();
+    this.cx.drawImage(offScreenCanvas, 60, 10, 40, 40, x - 7, y - 6, 40, 40);
   }
 
   if (player.speed.x !== 0) {
@@ -720,18 +681,18 @@ CanvasDisplay.prototype.drawActors = function (state) {
     } else if (actor.type === 'monster') {
       this.cx.drawImage(monster, x + 1, y);
     } else if (actor.type === 'life') {
-      this.cx.drawImage(heartCanvas, x, y);
+      this.cx.drawImage(heart, x, y);
     } else if (actor.type === 'shield') {
-      this.cx.drawImage(shieldCanvas, x - 20, y - 20);
+      this.cx.drawImage(offScreenCanvas, 0, 0, 60, 60, x - 20, y - 20, 60, 60);
     } else if (actor.type === 'speedIncreaser') {
-      this.cx.drawImage(speedIncreaserCanvas, x, y);
+      this.cx.drawImage(speedIncreaser, x, y);
     } else if (actor.type === 'jumpIncreaser') {
-      this.cx.drawImage(jumpIncreaserCanvas, x, y);
+      this.cx.drawImage(jumpIncreaser, x, y);
     } else if (actor.type === 'star') {
       this.cx.save();
       this.cx.shadowColor = 'yellow';
       this.cx.shadowBlur = actor.blur;
-      this.cx.drawImage(starCanvas, x, y);
+      this.cx.drawImage(star, x, y);
       this.cx.restore();
     }
   }
