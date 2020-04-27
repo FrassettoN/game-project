@@ -447,19 +447,20 @@ const levelChars = {
 const scale = 20;
 
 let canvas = document.createElement('canvas');
-document.fullscreenEnabled = true;
-
-document.addEventListener('load', () => {
+canvas.addEventListener('click', () => {
   if (canvas.requestFullscreen) {
     canvas.requestFullscreen().catch(console.log);
+  } else {
+    console.log("canvas doesn't have fullscreen");
   }
 });
+let parent = document.body;
+parent.appendChild(canvas);
 
 class CanvasDisplay {
-  constructor(parent, level) {
+  constructor(level) {
     canvas.width = Math.min(600, level.width * scale);
     canvas.height = Math.min(450, level.height * scale);
-    parent.appendChild(canvas);
     this.cx = canvas.getContext('2d', { alpha: false });
 
     this.flipPlayer = false;
@@ -474,10 +475,6 @@ class CanvasDisplay {
     this.backgroundColor = this.cx.createLinearGradient(0, 0, 0, canvas.height);
     this.backgroundColor.addColorStop(0, 'rgb(45, 165, 255)');
     this.backgroundColor.addColorStop(1, 'rgb(0, 80, 140)');
-  }
-
-  clear() {
-    canvas.remove();
   }
 }
 
@@ -781,7 +778,7 @@ function resetVariables() {
 }
 
 function runLevel(level, Display) {
-  let display = new Display(document.body, level);
+  let display = new Display(level);
   let state = State.start(level);
   let ending = 1;
   let running = 'yes';
@@ -814,7 +811,6 @@ function runLevel(level, Display) {
         ending -= time;
         return true;
       } else {
-        display.clear();
         window.removeEventListener('keydown', escHandler);
         arrowKeys.unregister();
         touchesDirections.unregister();
