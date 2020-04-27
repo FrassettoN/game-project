@@ -446,35 +446,38 @@ const levelChars = {
 
 const scale = 20;
 
+let canvas = document.createElement('canvas');
+document.fullscreenEnabled = true;
+
+document.addEventListener('load', () => {
+  if (canvas.requestFullscreen) {
+    canvas.requestFullscreen().catch(console.log);
+  }
+});
+
 class CanvasDisplay {
   constructor(parent, level) {
-    this.canvas = document.createElement('canvas');
-    this.canvas.width = Math.min(600, level.width * scale);
-    this.canvas.height = Math.min(450, level.height * scale);
-    parent.appendChild(this.canvas);
-    this.cx = this.canvas.getContext('2d', { alpha: false });
+    canvas.width = Math.min(600, level.width * scale);
+    canvas.height = Math.min(450, level.height * scale);
+    parent.appendChild(canvas);
+    this.cx = canvas.getContext('2d', { alpha: false });
 
     this.flipPlayer = false;
 
     this.viewport = {
       left: 0,
       top: 0,
-      width: this.canvas.width / scale,
-      height: this.canvas.height / scale,
+      width: canvas.width / scale,
+      height: canvas.height / scale,
     };
 
-    this.backgroundColor = this.cx.createLinearGradient(
-      0,
-      0,
-      0,
-      this.canvas.height
-    );
+    this.backgroundColor = this.cx.createLinearGradient(0, 0, 0, canvas.height);
     this.backgroundColor.addColorStop(0, 'rgb(45, 165, 255)');
     this.backgroundColor.addColorStop(1, 'rgb(0, 80, 140)');
   }
 
   clear() {
-    this.canvas.remove();
+    canvas.remove();
   }
 }
 
@@ -521,7 +524,7 @@ CanvasDisplay.prototype.clearDisplay = function (status) {
     color = this.backgroundColor;
   }
   this.cx.fillStyle = color;
-  this.cx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+  this.cx.fillRect(0, 0, canvas.width, canvas.height);
 };
 
 function createSprite(type) {
