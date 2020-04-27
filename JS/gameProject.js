@@ -61,14 +61,10 @@ State.prototype.update = function (time, keys, touch) {
     actor.update(time, this, keys, touch)
   );
   let newState = new State(this.level, actors, this.status);
-  if (newState.status !== 'playing' && newState.status !== 'protected')
-    return newState;
+  if (newState.status !== 'playing' && shieldActive) return newState;
 
   let player = newState.player;
-  if (
-    this.level.touches(player.pos, player.size, 'lava') &&
-    this.status !== 'protected'
-  ) {
+  if (this.level.touches(player.pos, player.size, 'lava') && !shieldActive) {
     return new State(this.level, actors, 'lost');
   }
 
@@ -122,6 +118,7 @@ Player.prototype.size = new Vec(0.8, 1.5);
 let playerXSpeed = 8;
 const gravity = 30;
 let jumpSpeed = 17;
+let shieldActive = false;
 Player.prototype.update = function (time, state, keys, touch) {
   let xSpeed = 0;
   if (keys.ArrowLeft || touch.Left) xSpeed -= playerXSpeed;
@@ -214,10 +211,10 @@ Lava.prototype.update = function (time, state) {
   }
 };
 Lava.prototype.collide = function (state) {
-  if (state.status !== 'protected') {
-    return new State(state.level, state.actors, 'lost');
+  if (shieldActive) {
+    return new State(state.level, state.actors, state.status);
   } else {
-    return new State(state.level, state.actors, 'protected');
+    return new State(state.level, state.actors, 'lost');
   }
 };
 
@@ -272,10 +269,10 @@ Monster.prototype.collide = function (state) {
   if (this.pos.y - this.size.y > state.player.pos.y) {
     let filtered = state.actors.filter((a) => a !== this);
     return new State(state.level, filtered, state.status);
-  } else if (state.status !== 'protected') {
-    return new State(state.level, state.actors, 'lost');
+  } else if (shieldActive) {
+    return new State(state.level, state.actors, state.status);
   } else {
-    return new State(state.level, state.actors, 'protected');
+    return new State(state.level, state.actors, 'lost');
   }
 };
 const monsterSpeed = 4;
@@ -338,7 +335,11 @@ Shield.prototype.update = function (time) {
 };
 Shield.prototype.collide = function (state) {
   let filtered = state.actors.filter((a) => a !== this);
-  return new State(state.level, filtered, 'protected');
+  shieldActive = true;
+  setTimeout(() => {
+    shieldActive = false;
+  }, 5000);
+  return new State(state.level, filtered, state.status);
 };
 
 let SpeedIncreaser = class SpeedIncreaser {
@@ -626,7 +627,7 @@ CanvasDisplay.prototype.drawPlayer = function (
   width += playerXOverlap * 2;
   x -= playerXOverlap;
 
-  if (state.status === 'protected') {
+  if (shieldActive) {
     this.cx.fillStyle = 'rgba(0, 145, 150, 0.9)';
     this.cx.beginPath();
     this.cx.arc(x + width / 2, y + height / 2, (width / 4) * 3, 0, Math.PI * 2);
@@ -780,7 +781,6 @@ function runLevel(level, Display) {
   let display = new Display(document.body, level);
   let state = State.start(level);
   let ending = 1;
-  let endShield = 5;
   let running = 'yes';
 
   return new Promise((resolve) => {
@@ -807,16 +807,7 @@ function runLevel(level, Display) {
       state = state.update(time, arrowKeys, touchesDirections);
       display.syncState(state);
       if (state.status === 'playing') return true;
-      else if (state.status === 'protected') {
-        endShield -= time;
-        if (endShield < 0) {
-          state.status = 'playing';
-          endShield = 5;
-        } else {
-          console.log(Math.ceil(endShield));
-        }
-        return true;
-      } else if (ending > 0) {
+      else if (ending > 0) {
         ending -= time;
         return true;
       } else {
