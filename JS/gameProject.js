@@ -446,14 +446,25 @@ const levelChars = {
 
 const scale = 20;
 
-let canvas = document.createElement('canvas');
-canvas.addEventListener('click', () => {
+function canvasFullScreen(event) {
   if (canvas.requestFullscreen) {
     canvas.requestFullscreen().catch(console.log);
-  } else {
-    console.log("canvas doesn't have fullscreen");
+    if (screen.orientation.lock) {
+      screen.orientation
+        .lock('landscape')
+        .catch(() => console.log('Screen orientation not supported'));
+    }
+    canvas.removeEventListener('click', canvasFullScreen);
+  }
+}
+let canvas = document.createElement('canvas');
+canvas.addEventListener('click', canvasFullScreen);
+document.addEventListener('fullscreenchange', () => {
+  if (document.fullscreenEnabled) {
+    canvas.addEventListener('click', canvasFullScreen);
   }
 });
+
 let parent = document.body;
 parent.appendChild(canvas);
 
@@ -584,7 +595,7 @@ function drawDeadCircle(cx, x, y) {
 }
 
 drawShield(offScreenCx, 0, 0);
-drawDeadCircle(offScreenCx, 60, 0);
+drawDeadCircle(offScreenCx, 70, 0);
 
 CanvasDisplay.prototype.drawBackground = function (level) {
   let { left, top, width, height } = this.viewport;
@@ -633,7 +644,7 @@ CanvasDisplay.prototype.drawPlayer = function (
     this.cx.arc(x + width / 2, y + height / 2, (width / 4) * 3, 0, Math.PI * 2);
     this.cx.fill();
   } else if (state.status === 'lost') {
-    this.cx.drawImage(offScreenCanvas, 60, 10, 40, 40, x - 7, y - 6, 40, 40);
+    this.cx.drawImage(offScreenCanvas, 70, 10, 40, 40, x - 7, y - 6, 40, 40);
   }
 
   if (player.speed.x !== 0) {
@@ -744,7 +755,6 @@ function trackTouch() {
     dir['Up'] = false;
     dir['Left'] = false;
     dir['Right'] = false;
-    event.preventDefault();
   }
 
   dir.unregister = () => {
