@@ -61,14 +61,10 @@ State.prototype.update = function (time, keys, touch) {
     actor.update(time, this, keys, touch)
   );
   let newState = new State(this.level, actors, this.status);
-  if (newState.status !== 'playing' && newState.status !== 'protected')
-    return newState;
+  if (newState.status !== 'playing' && shieldActive) return newState;
 
   let player = newState.player;
-  if (
-    this.level.touches(player.pos, player.size, 'lava') &&
-    this.status !== 'protected'
-  ) {
+  if (this.level.touches(player.pos, player.size, 'lava') && !shieldActive) {
     return new State(this.level, actors, 'lost');
   }
 
@@ -122,6 +118,7 @@ Player.prototype.size = new Vec(0.8, 1.5);
 let playerXSpeed = 8;
 const gravity = 30;
 let jumpSpeed = 17;
+let shieldActive = false;
 Player.prototype.update = function (time, state, keys, touch) {
   let xSpeed = 0;
   if (keys.ArrowLeft || touch.Left) xSpeed -= playerXSpeed;
@@ -214,10 +211,10 @@ Lava.prototype.update = function (time, state) {
   }
 };
 Lava.prototype.collide = function (state) {
-  if (state.status !== 'protected') {
-    return new State(state.level, state.actors, 'lost');
+  if (shieldActive) {
+    return new State(state.level, state.actors, state.status);
   } else {
-    return new State(state.level, state.actors, 'protected');
+    return new State(state.level, state.actors, 'lost');
   }
 };
 
@@ -272,10 +269,10 @@ Monster.prototype.collide = function (state) {
   if (this.pos.y - this.size.y > state.player.pos.y) {
     let filtered = state.actors.filter((a) => a !== this);
     return new State(state.level, filtered, state.status);
-  } else if (state.status !== 'protected') {
-    return new State(state.level, state.actors, 'lost');
+  } else if (shieldActive) {
+    return new State(state.level, state.actors, state.status);
   } else {
-    return new State(state.level, state.actors, 'protected');
+    return new State(state.level, state.actors, 'lost');
   }
 };
 const monsterSpeed = 4;
@@ -288,10 +285,8 @@ Monster.prototype.update = function (time, state) {
 };
 
 let Life = class Life {
-  constructor(pos, basePos, wobble) {
+  constructor(pos) {
     this.pos = pos;
-    this.basePos = basePos;
-    this.wobble = wobble;
   }
 
   get type() {
@@ -299,7 +294,7 @@ let Life = class Life {
   }
 
   static create(pos) {
-    return new Life(pos, pos, Math.random() * Math.PI * 2);
+    return new Life(pos);
   }
 };
 Life.prototype.size = new Vec(1, 1);
@@ -310,15 +305,7 @@ Life.prototype.collide = function (state) {
   return new State(state.level, filtered, state.status);
 };
 Life.prototype.update = function (time) {
-  const wobbleSpeed = 4;
-  const wobbleDist = 0.1;
-  let wobble = this.wobble + time * wobbleSpeed;
-  let wobblePosX = Math.cos(wobble) * wobbleDist;
-  return new Life(
-    this.basePos.plus(new Vec(wobblePosX, 0)),
-    this.basePos,
-    wobble
-  );
+  return this;
 };
 
 let Shield = class Shield {
@@ -348,14 +335,16 @@ Shield.prototype.update = function (time) {
 };
 Shield.prototype.collide = function (state) {
   let filtered = state.actors.filter((a) => a !== this);
-  return new State(state.level, filtered, 'protected');
+  shieldActive = true;
+  setTimeout(() => {
+    shieldActive = false;
+  }, 5000);
+  return new State(state.level, filtered, state.status);
 };
 
 let SpeedIncreaser = class SpeedIncreaser {
-  constructor(pos, basePos, speed) {
+  constructor(pos) {
     this.pos = pos;
-    this.basePos = basePos;
-    this.speed = speed;
   }
 
   get type() {
@@ -363,17 +352,13 @@ let SpeedIncreaser = class SpeedIncreaser {
   }
 
   static create(pos) {
-    return new SpeedIncreaser(pos, pos, new Vec(2, 0));
+    return new SpeedIncreaser(pos);
   }
 };
 
 SpeedIncreaser.prototype.size = new Vec(1, 1);
-SpeedIncreaser.prototype.update = function (time) {
-  let newPos = this.pos.plus(this.speed.times(time));
-  let direction = 1;
-  if (newPos.x - this.basePos.x > 1) direction = -1;
-  else if (newPos.x - this.basePos.x < 0) direction = -1;
-  return new SpeedIncreaser(newPos, this.basePos, this.speed.times(direction));
+SpeedIncreaser.prototype.update = function () {
+  return this;
 };
 SpeedIncreaser.prototype.collide = function (state) {
   let filtered = state.actors.filter((a) => a !== this);
@@ -385,10 +370,8 @@ SpeedIncreaser.prototype.collide = function (state) {
 };
 
 let JumpIncreaser = class JumpIncreaser {
-  constructor(pos, basePos, speed) {
+  constructor(pos) {
     this.pos = pos;
-    this.basePos = basePos;
-    this.speed = speed;
   }
 
   get type() {
@@ -396,17 +379,13 @@ let JumpIncreaser = class JumpIncreaser {
   }
 
   static create(pos) {
-    return new JumpIncreaser(pos, pos, new Vec(0, -2));
+    return new JumpIncreaser(pos);
   }
 };
 
 JumpIncreaser.prototype.size = new Vec(1, 1);
-JumpIncreaser.prototype.update = function (time) {
-  let newPos = this.pos.plus(this.speed.times(time));
-  let direction = 1;
-  if (newPos.y - this.basePos.y < -1) direction = -1;
-  else if (newPos.y - this.basePos.y > 0) direction = -1;
-  return new JumpIncreaser(newPos, this.basePos, this.speed.times(direction));
+JumpIncreaser.prototype.update = function () {
+  return this;
 };
 JumpIncreaser.prototype.collide = function (state) {
   let filtered = state.actors.filter((a) => a !== this);
@@ -465,96 +444,6 @@ const levelChars = {
   S: Star,
 };
 
-// function elt(name, attrs, ...children) {
-//   let dom = document.createElement(name);
-//   for (let attr of Object.keys(attrs)) {
-//     dom.setAttribute(attr, attrs[attr]);
-//   }
-//   for (let child of children) {
-//     dom.appendChild(child);
-//   }
-//   return dom;
-// }
-
-// let DOMDisplay = class DOMDisplay {
-//   constructor(parent, level) {
-//     this.dom = elt('div', { class: 'game' }, drawGrid(level));
-//     this.actorLayer = null;
-//     parent.appendChild(this.dom);
-//   }
-
-//   clear() {
-//     this.dom.remove();
-//   }
-// };
-
-// function drawGrid(level) {
-//   return elt(
-//     'table',
-//     {
-//       class: 'background',
-//       style: `width: ${level.width * scale}px`,
-//     },
-//     ...level.rows.map((row) =>
-//       elt(
-//         'tr',
-//         { style: `height: ${scale}px` },
-//         ...row.map((type) => elt('td', { class: type }))
-//       )
-//     )
-//   );
-// }
-
-// function drawActors(actors) {
-//   return elt(
-//     'div',
-//     {},
-//     ...actors.map((actor) => {
-//       let rect = elt('div', { class: 'actor ' + actor.type });
-//       rect.style.width = `${actor.size.x * scale}px`;
-//       rect.style.height = `${actor.size.y * scale}px`;
-//       rect.style.left = `${actor.pos.x * scale}px`;
-//       rect.style.top = `${actor.pos.y * scale}px`;
-//       return rect;
-//     })
-//   );
-// }
-
-// DOMDisplay.prototype.syncState = function (state) {
-//   if (this.actorLayer) this.actorLayer.remove();
-//   this.actorLayer = drawActors(state.actors);
-//   this.dom.appendChild(this.actorLayer);
-//   this.dom.className = `game ${state.status}`;
-//   this.scrollPlayerIntoView(state);
-// };
-
-// // capire BENE come funziona
-// DOMDisplay.prototype.scrollPlayerIntoView = function (state) {
-//   let width = this.dom.clientWidth;
-//   let height = this.dom.clientHeight;
-//   let margin = width / 3;
-
-//   // The viewport
-//   let left = this.dom.scrollLeft;
-//   let right = left + width;
-//   let top = this.dom.scrollTop;
-//   let bottom = top + height;
-
-//   let player = state.player;
-//   let center = player.pos.plus(player.size.times(0.5)).times(scale);
-
-//   if (center.x < left + margin) {
-//     this.dom.scrollLeft = center.x - margin;
-//   } else if (center.x > right - margin) {
-//     this.dom.scrollLeft = center.x + margin - width;
-//   }
-//   if (center.y < top + margin) {
-//     this.dom.scrollTop = center.y - margin;
-//   } else if (center.y > bottom - margin) {
-//     this.dom.scrollTop = center.y + margin - height;
-//   }
-// };
-
 const scale = 20;
 
 class CanvasDisplay {
@@ -573,6 +462,15 @@ class CanvasDisplay {
       width: this.canvas.width / scale,
       height: this.canvas.height / scale,
     };
+
+    this.backgroundColor = this.cx.createLinearGradient(
+      0,
+      0,
+      0,
+      this.canvas.height
+    );
+    this.backgroundColor.addColorStop(0, 'rgb(45, 165, 255)');
+    this.backgroundColor.addColorStop(1, 'rgb(0, 80, 140)');
   }
 
   clear() {
@@ -620,9 +518,7 @@ CanvasDisplay.prototype.clearDisplay = function (status) {
   } else if (status === 'lost') {
     color = 'rgb(0, 60, 100)';
   } else {
-    color = this.cx.createLinearGradient(0, 0, 0, this.canvas.height);
-    color.addColorStop(0, 'rgb(45, 165, 255)');
-    color.addColorStop(1, 'rgb(0, 80, 140)');
+    color = this.backgroundColor;
   }
   this.cx.fillStyle = color;
   this.cx.fillRect(0, 0, this.canvas.width, this.canvas.height);
@@ -637,42 +533,25 @@ let coin = createSprite('coin');
 let lava = createSprite('lava');
 let wall = createSprite('wall');
 let monster = createSprite('monster');
+let speedIncreaser = createSprite('speedIncreaser');
+let jumpIncreaser = createSprite('jumpIncreaser');
+let star = createSprite('star');
+let heart = createSprite('heart');
 
-function drawHeart(cx, x, y) {
-  cx.font = '2.3em Comic Sans MS';
-  cx.fillStyle = 'rgb(25, 200, 25)';
-  cx.textAlign = 'center';
-  cx.fillText('❤', x, y);
-}
-
-let heartCanvas = document.createElement('canvas');
-heartCanvas.width = 30;
-heartCanvas.height = 40;
-let heartCx = heartCanvas.getContext('2d');
-drawHeart(heartCx, heartCanvas.width / 2 - 5, heartCanvas.height / 2);
-
-function drawStar(cx, x, y) {
-  cx.font = `1.7em Comic Sans MS`;
-  cx.fillStyle = 'yellow';
-  cx.textAlign = 'center';
-  cx.fillText('⭐', x, y);
-}
-
-let starCanvas = document.createElement('canvas');
-starCanvas.width = 30;
-starCanvas.height = 35;
-let starCx = starCanvas.getContext('2d');
-drawStar(starCx, starCanvas.width / 2 - 5, starCanvas.height / 2);
+let offScreenCanvas = document.createElement('canvas');
+offScreenCanvas.width = 120;
+offScreenCanvas.height = 60;
+let offScreenCx = offScreenCanvas.getContext('2d');
 
 function drawShield(cx, x, y) {
+  let blurSpace = 20;
+  let xStart = x + blurSpace;
+  let yStart = y + blurSpace;
   cx.fillStyle = 'rgb(0, 145, 150)';
   cx.strokeStyle = 'rgb(0, 145, 150)';
-  let blurSpace = 20;
   cx.shadowColor = 'white';
   cx.shadowBlur = 15;
   cx.beginPath();
-  let xStart = x + blurSpace;
-  let yStart = y + blurSpace;
   cx.moveTo(xStart, yStart);
   cx.lineTo(xStart + scale, yStart);
   cx.lineTo(xStart + scale, yStart + scale / 2);
@@ -684,43 +563,29 @@ function drawShield(cx, x, y) {
   cx.shadowBlur = 0;
 }
 
-let shieldCanvas = document.createElement('canvas');
-shieldCanvas.width = 60;
-shieldCanvas.height = 60;
-let shieldCx = shieldCanvas.getContext('2d');
-drawShield(shieldCx, 0, 0);
-
-function drawSpeedIncreaser(cx, x, y) {
-  cx.font = '1.5em Comic Sans MS';
-  cx.textAlign = 'center';
-  cx.fillText('⏩', x, y);
+function drawDeadCircle(cx, x, y) {
+  let radius = 20;
+  let centerX = x + radius;
+  let centerY = y + offScreenCanvas.height / 2;
+  let radialGradient = cx.createRadialGradient(
+    centerX,
+    centerY,
+    8,
+    centerX,
+    centerY,
+    16
+  );
+  radialGradient.addColorStop(0, 'rgb(255, 115, 0)');
+  radialGradient.addColorStop(1, 'rgb(255, 50, 50)');
+  cx.beginPath();
+  cx.fillStyle = radialGradient;
+  cx.arc(centerX, centerY, radius, 0, 7);
+  cx.fill();
 }
 
-function drawJumpIncreaser(cx, x, y) {
-  cx.font = '1.5em Comic Sans MS';
-  cx.textAlign = 'center';
-  cx.fillText('⏫', x, y);
-}
+drawShield(offScreenCx, 0, 0);
+drawDeadCircle(offScreenCx, 60, 0);
 
-let speedIncreaserCanvas = document.createElement('canvas');
-speedIncreaserCanvas.width = 20;
-speedIncreaserCanvas.height = 30;
-let speedIncreaserCx = speedIncreaserCanvas.getContext('2d');
-drawSpeedIncreaser(
-  speedIncreaserCx,
-  speedIncreaserCanvas.width / 2,
-  speedIncreaserCanvas.height / 2
-);
-
-let jumpIncreaserCanvas = document.createElement('canvas');
-jumpIncreaserCanvas.width = 20;
-jumpIncreaserCanvas.height = 30;
-let jumpIncreaserCx = jumpIncreaserCanvas.getContext('2d');
-drawJumpIncreaser(
-  jumpIncreaserCx,
-  jumpIncreaserCanvas.width / 2,
-  jumpIncreaserCanvas.height / 2
-);
 CanvasDisplay.prototype.drawBackground = function (level) {
   let { left, top, width, height } = this.viewport;
   let xStart = Math.floor(left);
@@ -762,28 +627,13 @@ CanvasDisplay.prototype.drawPlayer = function (
   width += playerXOverlap * 2;
   x -= playerXOverlap;
 
-  if (state.status === 'protected') {
+  if (shieldActive) {
     this.cx.fillStyle = 'rgba(0, 145, 150, 0.9)';
     this.cx.beginPath();
     this.cx.arc(x + width / 2, y + height / 2, (width / 4) * 3, 0, Math.PI * 2);
     this.cx.fill();
   } else if (state.status === 'lost') {
-    let centerX = x + width / 2;
-    let centerY = y + height / 2;
-    let radialGradient = this.cx.createRadialGradient(
-      centerX,
-      centerY,
-      width / 3,
-      centerX,
-      centerY,
-      (width / 3) * 2
-    );
-    radialGradient.addColorStop(0, 'rgb(255, 115, 0)');
-    radialGradient.addColorStop(1, 'rgb(255, 50, 50)');
-    this.cx.beginPath();
-    this.cx.fillStyle = radialGradient;
-    this.cx.arc(x + width / 2, y + height / 2, (width / 6) * 5, 0, Math.PI * 2);
-    this.cx.fill();
+    this.cx.drawImage(offScreenCanvas, 60, 10, 40, 40, x - 7, y - 6, 40, 40);
   }
 
   if (player.speed.x !== 0) {
@@ -832,18 +682,18 @@ CanvasDisplay.prototype.drawActors = function (state) {
     } else if (actor.type === 'monster') {
       this.cx.drawImage(monster, x + 1, y);
     } else if (actor.type === 'life') {
-      this.cx.drawImage(heartCanvas, x, y);
+      this.cx.drawImage(heart, x, y);
     } else if (actor.type === 'shield') {
-      this.cx.drawImage(shieldCanvas, x - 20, y - 20);
+      this.cx.drawImage(offScreenCanvas, 0, 0, 60, 60, x - 20, y - 20, 60, 60);
     } else if (actor.type === 'speedIncreaser') {
-      this.cx.drawImage(speedIncreaserCanvas, x, y);
+      this.cx.drawImage(speedIncreaser, x, y);
     } else if (actor.type === 'jumpIncreaser') {
-      this.cx.drawImage(jumpIncreaserCanvas, x, y);
+      this.cx.drawImage(jumpIncreaser, x, y);
     } else if (actor.type === 'star') {
       this.cx.save();
       this.cx.shadowColor = 'yellow';
       this.cx.shadowBlur = actor.blur;
-      this.cx.drawImage(starCanvas, x, y);
+      this.cx.drawImage(star, x, y);
       this.cx.restore();
     }
   }
@@ -931,7 +781,6 @@ function runLevel(level, Display) {
   let display = new Display(document.body, level);
   let state = State.start(level);
   let ending = 1;
-  let endShield = 5;
   let running = 'yes';
 
   return new Promise((resolve) => {
@@ -958,15 +807,7 @@ function runLevel(level, Display) {
       state = state.update(time, arrowKeys, touchesDirections);
       display.syncState(state);
       if (state.status === 'playing') return true;
-      else if (state.status === 'protected') {
-        endShield -= time;
-        if (endShield < 0) {
-          state.status = 'playing';
-        } else {
-          console.log(Math.ceil(endShield));
-        }
-        return true;
-      } else if (ending > 0) {
+      else if (ending > 0) {
         ending -= time;
         return true;
       } else {
