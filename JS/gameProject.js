@@ -446,15 +446,21 @@ const levelChars = {
 
 const scale = 20;
 
+let startText = true;
 function canvasFullScreen(event) {
   if (canvas.requestFullscreen) {
     canvas.requestFullscreen().catch(console.log);
+    startText = false;
+    canvas.removeEventListener('click', canvasFullScreen);
     if (screen.orientation.lock) {
       screen.orientation
         .lock('landscape')
-        .catch(() => console.log('Screen orientation not supported'));
+        .catch(() =>
+          console.log(
+            'Screen orientation not supported... be sure to have the best view!'
+          )
+        );
     }
-    canvas.removeEventListener('click', canvasFullScreen);
   }
 }
 let canvas = document.createElement('canvas');
@@ -465,14 +471,15 @@ document.addEventListener('fullscreenchange', () => {
   }
 });
 
-let parent = document.body;
+let parent = document.querySelector('main');
 parent.appendChild(canvas);
+let cx = canvas.getContext('2d', { alpha: false });
 
 class CanvasDisplay {
   constructor(level) {
     canvas.width = Math.min(600, level.width * scale);
     canvas.height = Math.min(450, level.height * scale);
-    this.cx = canvas.getContext('2d', { alpha: false });
+    this.cx = cx;
 
     this.flipPlayer = false;
 
@@ -598,6 +605,17 @@ drawShield(offScreenCx, 0, 0);
 drawDeadCircle(offScreenCx, 70, 0);
 
 CanvasDisplay.prototype.drawBackground = function (level) {
+  if (startText) {
+    this.cx.font = 'small-caps 30px Sans-serif';
+    this.cx.fillStyle = 'white';
+    this.cx.textBaseline = 'center';
+    this.cx.textAlign = 'center';
+    this.cx.fillText(
+      'tap to play',
+      canvas.width / 2,
+      (canvas.height / 100) * 10
+    );
+  }
   let { left, top, width, height } = this.viewport;
   let xStart = Math.floor(left);
   let xEnd = Math.ceil(left + width);
@@ -713,7 +731,7 @@ CanvasDisplay.prototype.drawActors = function (state) {
 function trackKeys(keys) {
   let down = Object.create(null);
   function track(event) {
-    if (keys.includes(event.key)) {
+    if (keys.includes(event.key) && !startText) {
       down[event.key] = event.type === 'keydown';
       event.preventDefault();
     }
@@ -739,16 +757,16 @@ function trackTouch() {
 
   function touchStart(event) {
     startPos = getPos(event);
-    event.preventDefault();
   }
 
   function touchMove(event) {
     let newPos = getPos(event);
-    dir['Up'] = newPos.y - startPos.y < -10;
-    dir['Left'] = newPos.x - startPos.x < -10;
-    dir['Right'] = newPos.x - startPos.x > 10;
-    startPos.y = newPos.y;
-    event.preventDefault();
+    if (startPos && !startText) {
+      dir['Up'] = newPos.y - startPos.y < -10;
+      dir['Left'] = newPos.x - startPos.x < -10;
+      dir['Right'] = newPos.x - startPos.x > 10;
+      startPos.y = newPos.y;
+    }
   }
 
   function touchEnd(event) {
@@ -757,14 +775,14 @@ function trackTouch() {
     dir['Right'] = false;
   }
 
+  window.addEventListener('touchstart', touchStart);
+  window.addEventListener('touchmove', touchMove);
+  window.addEventListener('touchend', touchEnd);
   dir.unregister = () => {
     window.removeEventListener('touchstart', touchStart);
     window.removeEventListener('touchmove', touchMove);
     window.removeEventListener('touchend', touchEnd);
   };
-  window.addEventListener('touchstart', touchStart);
-  window.addEventListener('touchmove', touchMove);
-  window.addEventListener('touchend', touchEnd);
   return dir;
 }
 
@@ -785,6 +803,7 @@ function resetVariables() {
   playerXSpeed = 8;
   jumpSpeed = 17;
   money = 0;
+  shieldActive = false;
 }
 
 function runLevel(level, Display) {
@@ -794,8 +813,8 @@ function runLevel(level, Display) {
   let running = 'yes';
 
   return new Promise((resolve) => {
-    function escHandler(event) {
-      if (event.key !== 'Escape') return;
+    function pHandler(event) {
+      if (event.key !== 'p' && event.key !== 'P') return;
       event.preventDefault();
       if (running === 'no') {
         running = 'yes';
@@ -806,7 +825,7 @@ function runLevel(level, Display) {
         running = 'yes';
       }
     }
-    window.addEventListener('keydown', escHandler);
+    window.addEventListener('keydown', pHandler);
     let arrowKeys = trackKeys(['ArrowUp', 'ArrowLeft', 'ArrowRight']);
     let touchesDirections = trackTouch();
     function frame(time) {
@@ -821,7 +840,7 @@ function runLevel(level, Display) {
         ending -= time;
         return true;
       } else {
-        window.removeEventListener('keydown', escHandler);
+        window.removeEventListener('keydown', pHandler);
         arrowKeys.unregister();
         touchesDirections.unregister();
         resolve(state.status);
