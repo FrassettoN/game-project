@@ -1,6 +1,6 @@
-canvas:-webkit-full-screen {
-  width: 100%;
-  height: 100%;
+* {
+  margin: 0;
+  padding: 0;
 }
 
 h1 {
@@ -11,4 +11,9 @@ canvas {
   width: 80%;
   height: 20%;
   margin: auto 10%;
+}
+
+canvas:-webkit-full-screen {
+  width: 100%;
+  height: 100%;
 }

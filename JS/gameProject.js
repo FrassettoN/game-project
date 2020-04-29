@@ -61,7 +61,7 @@ State.prototype.update = function (time, keys, touch) {
     actor.update(time, this, keys, touch)
   );
   let newState = new State(this.level, actors, this.status);
-  if (newState.status !== 'playing' && shieldActive) return newState;
+  if (newState.status !== 'playing') return newState;
 
   let player = newState.player;
   if (this.level.touches(player.pos, player.size, 'lava') && !shieldActive) {
@@ -635,6 +635,31 @@ CanvasDisplay.prototype.drawBackground = function (level) {
       }
     }
   }
+
+  this.cx.font = 'small-caps 25px Sans-serif';
+  this.cx.fillStyle = 'white';
+  this.cx.textAlign = 'right';
+  this.cx.fillText(
+    `${totalMoney + money}`,
+    (canvas.width / 100) * 95,
+    (canvas.height / 100) * 6
+  );
+  this.cx.drawImage(
+    coin,
+    (canvas.width / 100) * 95 + coin.width,
+    (canvas.height / 100) * 6 - coin.height
+  );
+  this.cx.textAlign = 'left';
+  this.cx.fillText(
+    `${lives}`,
+    (canvas.width / 100) * 5 + 5,
+    (canvas.height / 100) * 6
+  );
+  this.cx.drawImage(
+    heart,
+    (canvas.width / 100) * 5 - heart.width,
+    (canvas.height / 100) * 6 - heart.height
+  );
 };
 
 let playerSprites = document.createElement('img');
@@ -749,18 +774,18 @@ function trackTouch() {
   let startPos;
   let dir = Object.create(null);
 
-  function getPos(touchEvent) {
+  function getTouchPosition(touchEvent) {
     let touch = touchEvent.changedTouches[0];
     let { pageX, pageY } = touch;
     return new Vec(pageX, pageY);
   }
 
   function touchStart(event) {
-    startPos = getPos(event);
+    startPos = getTouchPosition(event);
   }
 
   function touchMove(event) {
-    let newPos = getPos(event);
+    let newPos = getTouchPosition(event);
     if (startPos && !startText) {
       dir['Up'] = newPos.y - startPos.y < -10;
       dir['Left'] = newPos.x - startPos.x < -10;
@@ -802,7 +827,7 @@ function runAnimation(frameFun) {
 function resetVariables() {
   playerXSpeed = 8;
   jumpSpeed = 17;
-  money = 0;
+  money = 1100;
   shieldActive = false;
 }
 
@@ -870,7 +895,7 @@ async function runGame(plans, Display) {
     if (lives === 0) break;
   }
   let result = lives > 0 ? "You've won!" : `lives: ${lives}... You've lost!`;
-  totalMoney += 100 * lives;
+  totalMoney += 50 * lives;
   console.log(`total money: ${totalMoney}`);
   console.log(result);
   restartGame(Display);
