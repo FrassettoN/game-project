@@ -827,7 +827,7 @@ function runAnimation(frameFun) {
 function resetVariables() {
   playerXSpeed = 8;
   jumpSpeed = 17;
-  money = 1100;
+  money = 0;
   shieldActive = false;
 }
 
