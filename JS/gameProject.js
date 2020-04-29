@@ -61,7 +61,7 @@ State.prototype.update = function (time, keys, touch) {
     actor.update(time, this, keys, touch)
   );
   let newState = new State(this.level, actors, this.status);
-  if (newState.status !== 'playing' && shieldActive) return newState;
+  if (newState.status !== 'playing') return newState;
 
   let player = newState.player;
   if (this.level.touches(player.pos, player.size, 'lava') && !shieldActive) {
@@ -446,35 +446,53 @@ const levelChars = {
 
 const scale = 20;
 
+let startText = true;
+function canvasFullScreen(event) {
+  if (canvas.requestFullscreen) {
+    canvas.requestFullscreen().catch(console.log);
+    startText = false;
+    canvas.removeEventListener('click', canvasFullScreen);
+    if (screen.orientation.lock) {
+      screen.orientation
+        .lock('landscape')
+        .catch(() =>
+          console.log(
+            'Screen orientation not supported... be sure to have the best view!'
+          )
+        );
+    }
+  }
+}
+let canvas = document.createElement('canvas');
+canvas.addEventListener('click', canvasFullScreen);
+document.addEventListener('fullscreenchange', () => {
+  if (document.fullscreenEnabled) {
+    canvas.addEventListener('click', canvasFullScreen);
+  }
+});
+
+let parent = document.querySelector('main');
+parent.appendChild(canvas);
+let cx = canvas.getContext('2d', { alpha: false });
+
 class CanvasDisplay {
-  constructor(parent, level) {
-    this.canvas = document.createElement('canvas');
-    this.canvas.width = Math.min(600, level.width * scale);
-    this.canvas.height = Math.min(450, level.height * scale);
-    parent.appendChild(this.canvas);
-    this.cx = this.canvas.getContext('2d', { alpha: false });
+  constructor(level) {
+    canvas.width = Math.min(600, level.width * scale);
+    canvas.height = Math.min(450, level.height * scale);
+    this.cx = cx;
 
     this.flipPlayer = false;
 
     this.viewport = {
       left: 0,
       top: 0,
-      width: this.canvas.width / scale,
-      height: this.canvas.height / scale,
+      width: canvas.width / scale,
+      height: canvas.height / scale,
     };
 
-    this.backgroundColor = this.cx.createLinearGradient(
-      0,
-      0,
-      0,
-      this.canvas.height
-    );
+    this.backgroundColor = this.cx.createLinearGradient(0, 0, 0, canvas.height);
     this.backgroundColor.addColorStop(0, 'rgb(45, 165, 255)');
     this.backgroundColor.addColorStop(1, 'rgb(0, 80, 140)');
-  }
-
-  clear() {
-    this.canvas.remove();
   }
 }
 
@@ -521,7 +539,7 @@ CanvasDisplay.prototype.clearDisplay = function (status) {
     color = this.backgroundColor;
   }
   this.cx.fillStyle = color;
-  this.cx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+  this.cx.fillRect(0, 0, canvas.width, canvas.height);
 };
 
 function createSprite(type) {
@@ -584,9 +602,20 @@ function drawDeadCircle(cx, x, y) {
 }
 
 drawShield(offScreenCx, 0, 0);
-drawDeadCircle(offScreenCx, 60, 0);
+drawDeadCircle(offScreenCx, 70, 0);
 
 CanvasDisplay.prototype.drawBackground = function (level) {
+  if (startText) {
+    this.cx.font = 'small-caps 30px Sans-serif';
+    this.cx.fillStyle = 'white';
+    this.cx.textBaseline = 'center';
+    this.cx.textAlign = 'center';
+    this.cx.fillText(
+      'tap to play',
+      canvas.width / 2,
+      (canvas.height / 100) * 10
+    );
+  }
   let { left, top, width, height } = this.viewport;
   let xStart = Math.floor(left);
   let xEnd = Math.ceil(left + width);
@@ -606,6 +635,31 @@ CanvasDisplay.prototype.drawBackground = function (level) {
       }
     }
   }
+
+  this.cx.font = 'small-caps 25px Sans-serif';
+  this.cx.fillStyle = 'white';
+  this.cx.textAlign = 'right';
+  this.cx.fillText(
+    `${totalMoney + money}`,
+    (canvas.width / 100) * 95,
+    (canvas.height / 100) * 6
+  );
+  this.cx.drawImage(
+    coin,
+    (canvas.width / 100) * 95 + coin.width,
+    (canvas.height / 100) * 6 - coin.height
+  );
+  this.cx.textAlign = 'left';
+  this.cx.fillText(
+    `${lives}`,
+    (canvas.width / 100) * 5 + 5,
+    (canvas.height / 100) * 6
+  );
+  this.cx.drawImage(
+    heart,
+    (canvas.width / 100) * 5 - heart.width,
+    (canvas.height / 100) * 6 - heart.height
+  );
 };
 
 let playerSprites = document.createElement('img');
@@ -633,7 +687,7 @@ CanvasDisplay.prototype.drawPlayer = function (
     this.cx.arc(x + width / 2, y + height / 2, (width / 4) * 3, 0, Math.PI * 2);
     this.cx.fill();
   } else if (state.status === 'lost') {
-    this.cx.drawImage(offScreenCanvas, 60, 10, 40, 40, x - 7, y - 6, 40, 40);
+    this.cx.drawImage(offScreenCanvas, 70, 10, 40, 40, x - 7, y - 6, 40, 40);
   }
 
   if (player.speed.x !== 0) {
@@ -702,7 +756,7 @@ CanvasDisplay.prototype.drawActors = function (state) {
 function trackKeys(keys) {
   let down = Object.create(null);
   function track(event) {
-    if (keys.includes(event.key)) {
+    if (keys.includes(event.key) && !startText) {
       down[event.key] = event.type === 'keydown';
       event.preventDefault();
     }
@@ -720,41 +774,40 @@ function trackTouch() {
   let startPos;
   let dir = Object.create(null);
 
-  function getPos(touchEvent) {
+  function getTouchPosition(touchEvent) {
     let touch = touchEvent.changedTouches[0];
     let { pageX, pageY } = touch;
     return new Vec(pageX, pageY);
   }
 
   function touchStart(event) {
-    startPos = getPos(event);
-    event.preventDefault();
+    startPos = getTouchPosition(event);
   }
 
   function touchMove(event) {
-    let newPos = getPos(event);
-    dir['Up'] = newPos.y - startPos.y < -10;
-    dir['Left'] = newPos.x - startPos.x < -10;
-    dir['Right'] = newPos.x - startPos.x > 10;
-    startPos.y = newPos.y;
-    event.preventDefault();
+    let newPos = getTouchPosition(event);
+    if (startPos && !startText) {
+      dir['Up'] = newPos.y - startPos.y < -10;
+      dir['Left'] = newPos.x - startPos.x < -10;
+      dir['Right'] = newPos.x - startPos.x > 10;
+      startPos.y = newPos.y;
+    }
   }
 
   function touchEnd(event) {
     dir['Up'] = false;
     dir['Left'] = false;
     dir['Right'] = false;
-    event.preventDefault();
   }
 
+  window.addEventListener('touchstart', touchStart);
+  window.addEventListener('touchmove', touchMove);
+  window.addEventListener('touchend', touchEnd);
   dir.unregister = () => {
     window.removeEventListener('touchstart', touchStart);
     window.removeEventListener('touchmove', touchMove);
     window.removeEventListener('touchend', touchEnd);
   };
-  window.addEventListener('touchstart', touchStart);
-  window.addEventListener('touchmove', touchMove);
-  window.addEventListener('touchend', touchEnd);
   return dir;
 }
 
@@ -774,18 +827,19 @@ function runAnimation(frameFun) {
 function resetVariables() {
   playerXSpeed = 8;
   jumpSpeed = 17;
-  money = 0;
+  money = 1100;
+  shieldActive = false;
 }
 
 function runLevel(level, Display) {
-  let display = new Display(document.body, level);
+  let display = new Display(level);
   let state = State.start(level);
   let ending = 1;
   let running = 'yes';
 
   return new Promise((resolve) => {
-    function escHandler(event) {
-      if (event.key !== 'Escape') return;
+    function pHandler(event) {
+      if (event.key !== 'p' && event.key !== 'P') return;
       event.preventDefault();
       if (running === 'no') {
         running = 'yes';
@@ -796,7 +850,7 @@ function runLevel(level, Display) {
         running = 'yes';
       }
     }
-    window.addEventListener('keydown', escHandler);
+    window.addEventListener('keydown', pHandler);
     let arrowKeys = trackKeys(['ArrowUp', 'ArrowLeft', 'ArrowRight']);
     let touchesDirections = trackTouch();
     function frame(time) {
@@ -811,8 +865,7 @@ function runLevel(level, Display) {
         ending -= time;
         return true;
       } else {
-        display.clear();
-        window.removeEventListener('keydown', escHandler);
+        window.removeEventListener('keydown', pHandler);
         arrowKeys.unregister();
         touchesDirections.unregister();
         resolve(state.status);
@@ -842,7 +895,7 @@ async function runGame(plans, Display) {
     if (lives === 0) break;
   }
   let result = lives > 0 ? "You've won!" : `lives: ${lives}... You've lost!`;
-  totalMoney += 100 * lives;
+  totalMoney += 50 * lives;
   console.log(`total money: ${totalMoney}`);
   console.log(result);
   restartGame(Display);
